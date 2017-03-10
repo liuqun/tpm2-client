@@ -27,7 +27,7 @@ COMPILE_c = $(COMPILE.c)
 COMPILE_cpp = $(COMPILE.cpp)
 
 main: main.o tcti_util.o
-	$(LINK.o) -o $@ $^ $(LIBS)
+	$(CXX) $(LD_FLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c
 	$(COMPILE_c) -o $@ $<
