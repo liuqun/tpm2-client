@@ -2,8 +2,11 @@
 # author: liuqun
 # date: 20170308
 
+.PHONY: default
+default: main
+
 .PHONY: all
-all: main
+all: default cscope tags
 
 # PREFIX should be the same dir where TPM2.0-TSS libraries has been installed to
 PREFIX := /usr/local
@@ -41,4 +44,19 @@ main: main.o tcti_util.o
 .PHONY: clean
 clean:
 	$(RM) *.o
+	$(RM) cscope.files cscope.out
+	$(RM) TAGS
 
+.PHONY: cscope
+cscope: cscope.out
+cscope.out: cscope.files
+	cscope -R -b -i $<
+cscope.files: ALWAYS_UPDATE_FILE_LIST
+	find . -name "*.cpp" -or -name "*.[ch]" > $@
+# Always updete the file list for TAGS and cscope, so ther will update symbol table from source files
+.PHONY: ALWAYS_UPDATE_FILE_LIST
+
+.PHONY: tags
+tags: TAGS
+TAGS: cscope.files
+	cat $^ | etags - -o $@
