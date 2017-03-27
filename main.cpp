@@ -121,6 +121,7 @@ public:
     void defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
             const char *password);
     void undefineNVSpace(TPMI_RH_NV_INDEX nvIndex);
+    void defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex);
 public:
     TSS2_SYS_CONTEXT *pSysContext;
 };
@@ -166,6 +167,11 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
      */
     class NVSpaceTest test1;
     test1.pSysContext = pSysContext;
+
+    const TPMI_RH_NV_INDEX NV_INDEX_WITHOUT_PASSWORD = 0x01500015;
+    test1.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD);
+    test1.undefineNVSpace(NV_INDEX_WITHOUT_PASSWORD);  // 测试结束时清除之前定义的 NV 区域
+
     const TPMI_RH_NV_INDEX NV_INDEX = 0x01500020;
     const char password[] = "My hard-coded password";
     TPM2B_MAX_NV_BUFFER nvWriteData;
@@ -296,4 +302,87 @@ void NVSpaceTest::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
                 "Tss2_Sys_NV_UndefineSpace FAILED!  Ret code 0x%04X\n", rval);
         // FIXME: Tss2_Sys_NV_UndefineSpace FAILED!  Ret code 0x028B
     }
+    else
+    {
+        DebugPrintf(NO_PREFIX,
+                "Tss2_Sys_NV_UndefineSpace successfully in %s()\n", __func__);
+    }
 }
+
+void NVSpaceTest::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex)
+{
+    if (!this->pSysContext)
+    {
+        return;
+    }
+
+    /* 设置如何定义 NV 空间的参数 */
+    TPM2B_NV_PUBLIC publicInfo;
+
+    publicInfo.t.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
+            + sizeof(TPMA_NV) + sizeof(UINT16) + sizeof(UINT16);
+    publicInfo.t.nvPublic.nvIndex = nvIndex;
+    publicInfo.t.nvPublic.nameAlg = TPM_ALG_SHA1;
+
+    // First zero out attributes.
+    *(UINT32 *) &(publicInfo.t.nvPublic.attributes) = 0;
+
+    // Now set the attributes.
+    publicInfo.t.nvPublic.attributes.TPMA_NV_PPREAD = 1;
+    publicInfo.t.nvPublic.attributes.TPMA_NV_PPWRITE = 1;
+    publicInfo.t.nvPublic.attributes.TPMA_NV_WRITE_STCLEAR = 1;
+    publicInfo.t.nvPublic.attributes.TPMA_NV_PLATFORMCREATE = 1;
+    publicInfo.t.nvPublic.authPolicy.t.size = 0;
+    publicInfo.t.nvPublic.dataSize = 32;
+
+    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
+    TPMS_AUTH_COMMAND sessionData;
+    TPMS_AUTH_COMMAND *sessionDataArray[1];
+    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+
+    sessionData.sessionHandle = TPM_RS_PW;
+    sessionData.nonce.t.size = 0;
+    sessionData.hmac.t.size = 0;
+    // Init session attributes
+    *((UINT8 *) ((void *) &sessionData.sessionAttributes)) = 0;
+
+    sessionDataArray[0] = &sessionData;
+    cmdAuthsArray.cmdAuths = &sessionDataArray[0];
+    cmdAuthsArray.cmdAuthsCount = 1;
+
+    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
+    TPMS_AUTH_RESPONSE sessionDataOut;
+    TPMS_AUTH_RESPONSE *sessionDataOutArray[1];
+    TSS2_SYS_RSP_AUTHS rspAuthsArray;
+
+    memset(&(sessionDataOut), 0x00, sizeof(sessionDataOut));
+    sessionDataOutArray[0] = &sessionDataOut;
+    rspAuthsArray.rspAuthsCount = 1;
+    rspAuthsArray.rspAuths = &(sessionDataOutArray[0]);
+
+    /* 指定密码 */
+    TPM2B_AUTH nvAuth;
+    nvAuth.t.size = 0;  // 不需要密码
+
+    /* System API 函数调用 */
+    TPM_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM_RH_PLATFORM,
+            &cmdAuthsArray, &nvAuth, &publicInfo, &rspAuthsArray);
+    if (rval)
+    {
+        DebugPrintf(NO_PREFIX,
+                "Tss2_Sys_NV_DefineSpace FAILED!  Ret code 0x%04X\n", rval);
+    }
+    else
+    {
+        DebugPrintf(NO_PREFIX, "Tss2_Sys_NV_DefineSpace successfully in %s()\n",
+                __func__);
+    }
+
+    /* 退出之前擦除内存中的密码副本 */
+    srand(time(NULL));
+    for (int i = 0; i < nvAuth.t.size; i++)
+    {
+        nvAuth.t.buffer[i] = (0xFF & rand());
+    }
+    nvAuth.t.size = 0;
+} // end defineNVSpaceWithoutPassword(nvIndex)
