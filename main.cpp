@@ -170,7 +170,108 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
 
     const TPMI_RH_NV_INDEX NV_INDEX_WITHOUT_PASSWORD = 0x01500015;
     test1.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD);
+
+    /* 创建以下结构体作为 Write(), Read() 的输入参数 TSS2_SYS_CMD_AUTHS */
+    TPMS_AUTH_COMMAND sessionData;
+    TPMS_AUTH_COMMAND *sessionDataArray[1];
+    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+
+    sessionData.sessionHandle = TPM_RS_PW;
+    sessionData.nonce.t.size = 0;
+    sessionData.hmac.t.size = 0;
+    *((UINT8 *) ((void *) &sessionData.sessionAttributes)) = 0;
+    sessionDataArray[0] = &sessionData;
+    cmdAuthsArray.cmdAuths = &sessionDataArray[0];
+    cmdAuthsArray.cmdAuthsCount = 1;
+
+    /* 执行第 1 次写入操作 */
+    TPM2B_MAX_NV_BUFFER data1;
+    data1.t.size = 26;
+    for (int i = 0; i < data1.t.size; i++)
+    {
+        data1.t.buffer[i] = 'a' + i; // 26个小写英文字母表作为测试数据
+    }
+    TPM_RC rc1write = Tss2_Sys_NV_Write(pSysContext, TPM_RH_PLATFORM,
+            NV_INDEX_WITHOUT_PASSWORD, &cmdAuthsArray, &data1, 0, NULL);
+    if (rc1write)
+    {
+        DebugPrintf(NO_PREFIX, "Write ERROR: rc1write=0x%X\n", rc1write);
+    }
+    else
+    {
+        DebugPrintf(NO_PREFIX, "Write success\n");
+    }
+    /* 执行第 1 次读取操作 */
+    TPM2B_MAX_NV_BUFFER data1Out;
+    data1Out.t.size = sizeof(TPM2B_MAX_NV_BUFFER) - 2;
+    TPM_RC rc1read = Tss2_Sys_NV_Read(pSysContext, TPM_RH_PLATFORM,
+            NV_INDEX_WITHOUT_PASSWORD, &cmdAuthsArray, data1.t.size, 0,
+            &data1Out, NULL);
+    if (rc1read)
+    {
+        DebugPrintf(NO_PREFIX, "Read ERROR: rc1read=0x%X\n", rc1read);
+    }
+    else
+    {
+        char str[100];
+        int len;
+        len = sizeof(str) - 1;
+        if (data1Out.t.size < len)
+        {
+            len = data1Out.t.size;
+        }
+        memcpy(str, data1Out.t.buffer, len);
+        str[len] = '\0';  // 补填字符串结束符号
+        DebugPrintf(NO_PREFIX, "Read success: dataOut=%s\n", str);
+    }
+
+    /* 执行第 2 次写入操作 */
+    TPM2B_MAX_NV_BUFFER data;
+    data.t.size = 26;
+    for (int i = 0; i < data.t.size; i++)
+    {
+        data.t.buffer[i] = 'A' + i; // 26个大写英文字母表作为测试数据
+    }
+    TPM_RC rc2write = Tss2_Sys_NV_Write(pSysContext, TPM_RH_PLATFORM,
+            NV_INDEX_WITHOUT_PASSWORD, &cmdAuthsArray, &data, 0, NULL);
+    if (rc2write)
+    {
+        DebugPrintf(NO_PREFIX, "Write ERROR: rc2write=0x%X\n", rc2write);
+    }
+    else
+    {
+        DebugPrintf(NO_PREFIX, "Write success\n");
+    }
+    /* 执行第 2 次读取操作 */
+    TPM2B_MAX_NV_BUFFER dataOut;
+    dataOut.t.size = sizeof(TPM2B_MAX_NV_BUFFER) - 2;
+    TPM_RC rc2read = Tss2_Sys_NV_Read(pSysContext, TPM_RH_PLATFORM,
+            NV_INDEX_WITHOUT_PASSWORD, &cmdAuthsArray, data.t.size, 0, &dataOut,
+            NULL);
+    if (rc2read)
+    {
+        DebugPrintf(NO_PREFIX, "Read ERROR: rc2read=0x%X\n", rc2read);
+    }
+    else
+    {
+        char str[100];
+        int len;
+        len = sizeof(str) - 1;
+        if (dataOut.t.size < len)
+        {
+            len = dataOut.t.size;
+        }
+        memcpy(str, dataOut.t.buffer, len);
+        str[len] = '\0';  // 补填字符串结束符号
+        DebugPrintf(NO_PREFIX, "Read success: dataOut=%s\n", str);
+    }
+
     test1.undefineNVSpace(NV_INDEX_WITHOUT_PASSWORD);  // 测试结束时清除之前定义的 NV 区域
+
+    /*
+     *
+     */
+    DebugPrintf(NO_PREFIX, "Next: Define password protected NV Space\n");
 
     const TPMI_RH_NV_INDEX NV_INDEX = 0x01500020;
     const char password[] = "My hard-coded password";
