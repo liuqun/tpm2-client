@@ -19,6 +19,7 @@ using namespace std;
 
 /* 自定义函数 */
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext);
+static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext);
 
 /* 以下函数均使用4个空格缩进，不使用Tab缩进 */
 
@@ -152,6 +153,17 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
         return;
     }
 
+    DoMyTestsWithSysContext(pSysContext);
+
+    /* Clean up the context when all tests ends */
+    Tss2_Sys_Finalize(pSysContext);
+    free(pSysContext);
+    pSysContext = NULL;
+    return;
+}
+
+static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
+{
     /*
      * Test1:
      */
@@ -378,9 +390,5 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
      * TODO: Add more tests here
      */
 
-    /* Clean up the context when all tests ends */
-    Tss2_Sys_Finalize(pSysContext);
-    free(pSysContext);
-    pSysContext = NULL;
     return;
 }
