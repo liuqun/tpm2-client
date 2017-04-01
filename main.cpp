@@ -14,6 +14,7 @@ using namespace std;
 
 #include "debug.h"
 #include "tcti_util.h"
+#include "ResponseCodeResolver.h"
 
 /* 自定义函数 */
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext);
@@ -363,7 +364,8 @@ void NVSpaceTest::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
     {
         DebugPrintf(NO_PREFIX,
                 "Tss2_Sys_NV_DefineSpace FAILED!  Ret code 0x%04X\n", rval);
-        // FIXME: Tss2_Sys_NV_DefineSpace FAILED!  Ret code 0x01D5
+        DebugPrintf(NO_PREFIX, "Error Message: %s\n",
+                GetErrMsgOfTPMResponseCode(rval));
     }
 
     /* 退出之前擦除内存中的密码副本 */

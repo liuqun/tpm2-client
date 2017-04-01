@@ -26,7 +26,7 @@ CXXFLAGS := $(CFLAGS)
 COMPILE_c = $(COMPILE.c)
 COMPILE_cpp = $(COMPILE.cpp)
 
-main: main.o tcti_util.o
+main: main.o tcti_util.o ResponseCodeResolver.o
 	$(CXX) $(LD_FLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c
