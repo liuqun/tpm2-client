@@ -36,6 +36,13 @@ ResponseCodeResolver::ResponseCodeResolver(TPM_RC rc)
 }
 
 /**
+ * 析构函数
+ */
+ResponseCodeResolver::~ResponseCodeResolver()
+{
+}
+
+/**
  * 无参数时的默认构造函数
  */
 UnsignedInt32Box::UnsignedInt32Box()
@@ -63,7 +70,7 @@ const char *ResponseCodeResolver::msg()
     } err;
     TPM_RC rc;
 
-    rc = static_cast<TPM_RC>(value());
+    rc = this->getResponseCode();
     if (!rc)
     {
         return "";
@@ -98,6 +105,11 @@ void ResponseCodeResolver::setResponseCode(TPM_RC rc)
 {
     uint32_t val = static_cast<uint32_t>(rc);
     UnsignedInt32Box::operator=(val);
+}
+
+TPM_RC ResponseCodeResolver::getResponseCode()
+{
+    return static_cast<TPM_RC>(this->UnsignedInt32Box::value());
 }
 
 void UnsignedInt32Box::operator=(uint32_t& value)

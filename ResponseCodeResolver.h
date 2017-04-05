@@ -64,7 +64,12 @@ public:
      *
      * @param TPM_RC rc
      */
-    ResponseCodeResolver(TPM_RC rc);
+    ResponseCodeResolver(TPM_RC rc = TPM_RC_SUCCESS);
+
+    /**
+     * 析构函数
+     */
+    virtual ~ResponseCodeResolver();
 
     /**
      * 成员函数: setResponseCode()
@@ -74,10 +79,20 @@ public:
     void setResponseCode(TPM_RC rc);
 
     /**
+     * 成员函数: getResponseCode()
+     *
+     * @return TPM_RC - 返回之前 setResponseCode() 函数存储的错误编码值
+     * 如果之前没有存储过错误编码则返回TPM_RC_SUCCESS
+     */
+    TPM_RC getResponseCode();
+
+    /**
      * 成员函数: msg()
      *
      * @return const char* - 一个表示错误信息的字符串(只读)
+     * 该字符串最大长度由具体实现决定, 约定字符串以 '\0' 结尾
      */
+    virtual
     const char *msg();
 
 };

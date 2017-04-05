@@ -125,6 +125,16 @@ public:
     void defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex);
 public:
     TSS2_SYS_CONTEXT *pSysContext;
+public:
+    /**
+     * An overwritten method of global func GetErrMsgOfTPMResponseCode()
+     *
+     * 用法: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
+     *
+     * @param TPM_RC rc
+     * @return const char* - 一个表示错误信息的字符串(只读)
+     */
+    static const char* GetErrMsgOfTPMResponseCode(TPM_RC rc); // 注: 此处定义重载了函数名称GetErrMsgOfTPMResponseCode()
 };
 
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
@@ -297,9 +307,60 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
     return;
 }
 
+class NVSpaceTestResponseCodeResolver: ResponseCodeResolver
+{
+public:
+    const char *msg()
+    {
+        static char msg[1024] = "";
+        const size_t SIZE = sizeof(msg);
+        size_t n;
+        struct
+        {
+            const char *reason;
+            const char *suggestion;
+        } err;
+        TPM_RC rc;
+
+        rc = this->getResponseCode();
+        if (!rc)
+        {
+            return "";
+        }
+
+        n = SIZE;
+        err.reason = "Unknown Response Code";
+        err.suggestion = "";
+        if (rc & RC_FMT1)
+        {
+            if ((rc & TPM_RC_P) && (rc & TPM_RC_SIZE))
+            {
+                err.reason = "Parameter size error";
+                err.suggestion = "Your password might be too long,"
+                        " please check the TPM's capability specifications";
+                snprintf(msg, n, "0x%X:%s. %s", rc, err.reason, err.suggestion);
+                return msg;
+            }
+        }
+        return this->ResponseCodeResolver::msg();
+    }
+};
+
 NVSpaceTest::NVSpaceTest()
 {
     this->pSysContext = NULL;
+}
+
+const char* NVSpaceTest::GetErrMsgOfTPMResponseCode(TPM_RC rval)
+{
+    const char *msg = "";
+    ResponseCodeResolver *pResolver =
+            (ResponseCodeResolver *) new NVSpaceTestResponseCodeResolver();
+
+    pResolver->setResponseCode(rval);
+    msg = pResolver->msg();
+    delete pResolver;
+    return msg;
 }
 
 #include <time.h>
