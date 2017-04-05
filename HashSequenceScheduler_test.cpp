@@ -262,6 +262,7 @@ static void RunDefaultTestCase(TSS2_SYS_CONTEXT *pSysContext)
     };
 
     TPM2B_DIGEST resultDigest;
+    resultDigest.t.size = 0;  // 清除内存中的无效数据
     TPM2B_MAX_BUFFER package;
     size_t n;
     size_t offset;
