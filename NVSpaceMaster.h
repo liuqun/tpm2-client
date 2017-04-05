@@ -11,17 +11,87 @@ class NVSpaceMaster
 {
 public:
     NVSpaceMaster();
+
+    /**
+     * 申请一块通过密码授权访问的非易失存储空间
+     *
+     * 用法:
+     * NVSpaceMaster master;
+     * master.pSysContext = pSysContext;
+     * try
+     * {
+     *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
+     *     ...
+     *     master.undefineNVSpace(nvIndex);
+     * }catch (const char *ErrMsg)
+     * {   printf("Error %s\n", ErrMsg);
+     * }
+     *
+     * @param TPMI_RH_NV_INDEX nvIndex 指定 TPM Object 句柄编号
+     * @param const char *password 访问密码
+     * @param uint16_t nvDataSize 指定空间大小
+     * @throws const char* 一个表示错误信息的字符串(只读)
+     */
     void defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
-            const char *password, uint16_t size);
+            const char *password, uint16_t nvDataSize);
+
+    /**
+     * 注销一块通过密码授权访问的非易失存储空间
+     *
+     * 用法:
+     * NVSpaceMaster master;
+     * master.pSysContext = pSysContext;
+     * try
+     * {
+     *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
+     *     ...
+     *     master.undefineNVSpace(nvIndex);
+     * }catch (const char *ErrMsg)
+     * {   printf("Error %s\n", ErrMsg);
+     * }
+     *
+     * @param TPMI_RH_NV_INDEX nvIndex 指定 TPM Object 句柄编号
+     * @throws const char* 一个表示错误信息的字符串(只读)
+     */
     void undefineNVSpace(TPMI_RH_NV_INDEX nvIndex);
-    void defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex, uint16_t size);
+
+    /**
+     * 申请一块无需密码授权即可访问的非易失存储空间
+     *
+     * 用法:与defineNVSpaceWithPassword()基本相同
+     * 两者区别只是带不带密码字段
+     *
+     * @param TPMI_RH_NV_INDEX nvIndex 指定 TPM Object 句柄编号
+     * @param uint16_t nvDataSize 指定空间大小
+     * @throws const char* 一个表示错误信息的字符串(只读)
+     */
+    void defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
+            uint16_t nvDataSize);
+
+    /**
+     * 公共成员变量: pSysContext
+     * 用法:
+     * NVSpaceMaster master;
+     * master.pSysContext = pSysContext;
+     * try
+     * {
+     *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
+     *     ...
+     *     master.undefineNVSpace(nvIndex);
+     * }catch (const char *ErrMsg)
+     * {   printf("Error %s\n", ErrMsg);
+     * }
+     */
 public:
     TSS2_SYS_CONTEXT *pSysContext;
+
+    /* 其他公开的 API 接口 */
 public:
     /**
      * An overwritten method of global func GetErrMsgOfTPMResponseCode()
      *
-     * 用法: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
+     * 用法1: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
+     * 用法2: printf("%s\n", NVSpaceMaster::GetErrMsgOfTPMResponseCode(rc));
      *
      * @param TPM_RC rc
      * @return const char* - 一个表示错误信息的字符串(只读)
