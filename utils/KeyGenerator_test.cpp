@@ -110,15 +110,6 @@ int main(int argc, char *argv[])
     return (0);
 }
 
-inline TSS2_SYS_CONTEXT *pSysContextWrapper(void *p)
-{
-#ifdef __cplusplus
-    return static_cast<TSS2_SYS_CONTEXT*>(p);
-#else
-    return (p);
-#endif
-}
-
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
 {
     TSS2_RC rval;
@@ -127,7 +118,7 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
     size_t contextSize;
 
     contextSize = Tss2_Sys_GetContextSize(0);
-    pSysContext = pSysContextWrapper(malloc(contextSize));
+    pSysContext = (TSS2_SYS_CONTEXT *) malloc(contextSize);
     if (!pSysContext)
     {
         DebugPrintf(NO_PREFIX,
@@ -260,22 +251,13 @@ static size_t GetSocketTctiContextSize()
     return size;
 }
 
-inline TSS2_TCTI_CONTEXT *pTCTIContextWrapper(void *p)
-{
-#ifdef __cplusplus
-    return static_cast<TSS2_TCTI_CONTEXT*>(p);
-#else
-    return (p);
-#endif
-}
-
 TSS2_RC InitSocketTctiContext(const TCTI_SOCKET_CONF *conf,
         TSS2_TCTI_CONTEXT **tcti_context)
 {
     size_t size;
 
     size = GetSocketTctiContextSize();
-    *tcti_context = pTCTIContextWrapper(malloc(size));
+    *tcti_context = (TSS2_TCTI_CONTEXT *) malloc(size);
     return InitSocketTcti(*tcti_context, &size, conf, 0);
 }
 

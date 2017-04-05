@@ -108,15 +108,6 @@ int main(int argc, char *argv[])
     return (0);
 }
 
-inline TSS2_SYS_CONTEXT *pSysContextFromPVoid(void *pVoid)
-{
-#ifdef __cplusplus
-    return static_cast<TSS2_SYS_CONTEXT*>(pVoid);
-#else
-    return (pVoid);
-#endif
-}
-
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
 {
     TSS2_RC rval;
@@ -125,7 +116,7 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
     size_t contextSize;
 
     contextSize = Tss2_Sys_GetContextSize(0);
-    pSysContext = pSysContextFromPVoid(malloc(contextSize));
+    pSysContext = (TSS2_SYS_CONTEXT *) malloc(contextSize);
     if (!pSysContext)
     {
         DebugPrintf(NO_PREFIX,
