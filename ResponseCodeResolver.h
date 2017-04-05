@@ -97,6 +97,23 @@ public:
 
 };
 
+/**
+ * NV space related response code resolver 辅助类
+ *
+ * 解析与 NV 空间操作相关的 TPM_RC 返回值编码
+ */
+class NVSpaceRelatedResponseCodeResolver: ResponseCodeResolver
+{
+    /**
+     * 成员函数: msg()
+     *
+     * @return const char* - 一个表示错误信息的字符串(只读)
+     * 该字符串最大长度由具体实现决定, 约定字符串以 '\0' 结尾
+     */
+    virtual
+    const char *msg();
+};
+
 #endif /* __cplusplus */
 
 /*

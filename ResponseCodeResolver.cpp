@@ -117,7 +117,43 @@ void UnsignedInt32Box::operator=(uint32_t& value)
     this->m_value = value;
 }
 
+/**
+ * 查找与执行 NV 空间操作返回的应答码相关的错误信息
+ */
+const char *NVSpaceRelatedResponseCodeResolver::msg()
+{
+    static char msg[1024] = "";
+    const size_t SIZE = sizeof(msg);
+    size_t n;
+    struct
+    {
+        const char *reason;
+        const char *suggestion;
+    } err;
+    TPM_RC rc;
 
+    rc = this->getResponseCode();
+    if (!rc)
+    {
+        return "";
+    }
+
+    n = SIZE;
+    err.reason = "Unknown Response Code";
+    err.suggestion = "";
+    if (rc & RC_FMT1)
+    {
+        if ((rc & TPM_RC_P) && (rc & TPM_RC_SIZE))
+        {
+            err.reason = "Parameter size error";
+            err.suggestion = "Your password might be too long,"
+                    " please check the TPM's capability specifications";
+            snprintf(msg, n, "0x%X:%s. %s", rc, err.reason, err.suggestion);
+            return msg;
+        }
+    }
+    return this->ResponseCodeResolver::msg();
+}
 /*
  * [附录]代码维护和排版建议:
  *

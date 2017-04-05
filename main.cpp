@@ -15,6 +15,7 @@ using namespace std;
 #include "debug.h"
 #include "tcti_util.h"
 #include "ResponseCodeResolver.h"
+#include "NVSpaceMaster.h"
 
 /* 自定义函数 */
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext);
@@ -115,28 +116,6 @@ inline TSS2_SYS_CONTEXT *pSysContextFromPVoid(void *pVoid)
 #endif
 }
 
-class NVSpaceTest
-{
-public:
-    NVSpaceTest();
-    void defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
-            const char *password);
-    void undefineNVSpace(TPMI_RH_NV_INDEX nvIndex);
-    void defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex);
-public:
-    TSS2_SYS_CONTEXT *pSysContext;
-public:
-    /**
-     * An overwritten method of global func GetErrMsgOfTPMResponseCode()
-     *
-     * 用法: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
-     *
-     * @param TPM_RC rc
-     * @return const char* - 一个表示错误信息的字符串(只读)
-     */
-    static const char* GetErrMsgOfTPMResponseCode(TPM_RC rc); // 注: 此处定义重载了函数名称GetErrMsgOfTPMResponseCode()
-};
-
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
 {
     TSS2_RC rval;
@@ -176,11 +155,12 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
     /*
      * Test1:
      */
-    class NVSpaceTest test1;
-    test1.pSysContext = pSysContext;
+    class NVSpaceMaster master;
+    master.pSysContext = pSysContext;
 
     const TPMI_RH_NV_INDEX NV_INDEX_WITHOUT_PASSWORD = 0x01500015;
-    test1.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD);
+    const uint16_t NV_SPACE_SIZE = 32;
+    master.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD, NV_SPACE_SIZE);
 
     /* 创建以下结构体作为 Write(), Read() 的输入参数 TSS2_SYS_CMD_AUTHS */
     TPMS_AUTH_COMMAND sessionData;
@@ -277,7 +257,7 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
         DebugPrintf(NO_PREFIX, "Read success: dataOut=%s\n", str);
     }
 
-    test1.undefineNVSpace(NV_INDEX_WITHOUT_PASSWORD);  // 测试结束时清除之前定义的 NV 区域
+    master.undefineNVSpace(NV_INDEX_WITHOUT_PASSWORD);  // 测试结束时清除之前定义的 NV 区域
 
     /*
      *
@@ -293,8 +273,14 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
         nvWriteData.t.buffer[i] = i + 1;
     }
 
-    test1.defineNVSpaceWithPassword(NV_INDEX, password);  // 定义一块 NV 区域用于测试
-    test1.undefineNVSpace(NV_INDEX);  // 测试结束时清除之前定义的 NV 区域
+    try
+    {
+        master.defineNVSpaceWithPassword(NV_INDEX, password, NV_SPACE_SIZE);  // 定义一块 NV 区域用于测试
+        master.undefineNVSpace(NV_INDEX);  // 测试结束时清除之前定义的 NV 区域
+    } catch (const char *ErrMsg)
+    {
+        DebugPrintf(NO_PREFIX, "Error: %s\n", ErrMsg);
+    }
 
     /*
      * TODO: Add more tests here
@@ -306,247 +292,3 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
     pSysContext = NULL;
     return;
 }
-
-class NVSpaceTestResponseCodeResolver: ResponseCodeResolver
-{
-public:
-    const char *msg()
-    {
-        static char msg[1024] = "";
-        const size_t SIZE = sizeof(msg);
-        size_t n;
-        struct
-        {
-            const char *reason;
-            const char *suggestion;
-        } err;
-        TPM_RC rc;
-
-        rc = this->getResponseCode();
-        if (!rc)
-        {
-            return "";
-        }
-
-        n = SIZE;
-        err.reason = "Unknown Response Code";
-        err.suggestion = "";
-        if (rc & RC_FMT1)
-        {
-            if ((rc & TPM_RC_P) && (rc & TPM_RC_SIZE))
-            {
-                err.reason = "Parameter size error";
-                err.suggestion = "Your password might be too long,"
-                        " please check the TPM's capability specifications";
-                snprintf(msg, n, "0x%X:%s. %s", rc, err.reason, err.suggestion);
-                return msg;
-            }
-        }
-        return this->ResponseCodeResolver::msg();
-    }
-};
-
-NVSpaceTest::NVSpaceTest()
-{
-    this->pSysContext = NULL;
-}
-
-const char* NVSpaceTest::GetErrMsgOfTPMResponseCode(TPM_RC rval)
-{
-    const char *msg = "";
-    ResponseCodeResolver *pResolver =
-            (ResponseCodeResolver *) new NVSpaceTestResponseCodeResolver();
-
-    pResolver->setResponseCode(rval);
-    msg = pResolver->msg();
-    delete pResolver;
-    return msg;
-}
-
-#include <time.h>
-
-void NVSpaceTest::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
-        const char *password)
-{
-    if (!this->pSysContext)
-    {
-        return;
-    }
-    /* 设置如何定义 NV 空间的参数 */
-    TPM2B_NV_PUBLIC publicInfo;
-
-    publicInfo.t.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
-            + sizeof(TPMA_NV) + sizeof(UINT16) + sizeof(UINT16);
-    publicInfo.t.nvPublic.nvIndex = nvIndex;
-    publicInfo.t.nvPublic.nameAlg = TPM_ALG_SHA1;
-    publicInfo.t.nvPublic.dataSize = 32;
-    memset(&(publicInfo.t.nvPublic.attributes), 0x00,
-            sizeof(publicInfo.t.nvPublic.attributes));
-    publicInfo.t.nvPublic.attributes.TPMA_NV_AUTHREAD = 1;  // 定义读NV数据时是否需要授权
-    publicInfo.t.nvPublic.attributes.TPMA_NV_AUTHWRITE = 1;  // 定义写NV数据时是否需要授权
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PLATFORMCREATE = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_ORDERLY = 1;
-    publicInfo.t.nvPublic.authPolicy.t.size = 0;
-
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
-    TPMS_AUTH_COMMAND cmdAuthNVDefine;
-    TPMS_AUTH_COMMAND *commands[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
-
-    cmdAuthNVDefine.sessionHandle = TPM_RS_PW;
-    memset(&(cmdAuthNVDefine.sessionAttributes), 0x00,
-            sizeof(cmdAuthNVDefine.sessionAttributes));
-    cmdAuthNVDefine.nonce.t.size = 0;
-    cmdAuthNVDefine.hmac.t.size = 0;
-    commands[0] = &cmdAuthNVDefine;
-    cmdAuthsArray.cmdAuthsCount = 1;
-    cmdAuthsArray.cmdAuths = &(commands[0]);
-
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
-    TPMS_AUTH_RESPONSE sessionDataOut;
-    TPMS_AUTH_RESPONSE *sessionDataOutArray[1];
-    TSS2_SYS_RSP_AUTHS rspAuthsArray;
-
-    memset(&(sessionDataOut), 0x00, sizeof(sessionDataOut));
-    sessionDataOutArray[0] = &sessionDataOut;
-    rspAuthsArray.rspAuthsCount = 1;
-    rspAuthsArray.rspAuths = &(sessionDataOutArray[0]);
-
-    /* 指定密码 */
-    TPM2B_AUTH nvAuth;  // nvAuth.t.buffer[] 在这里用于保存 password 明文
-
-    nvAuth.t.size = strlen(password);
-    memcpy(nvAuth.t.buffer, password, nvAuth.t.size);
-
-    /* System API 函数调用 */
-    TPM_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM_RH_PLATFORM,
-            &cmdAuthsArray, &nvAuth, &publicInfo, &rspAuthsArray);
-    if (rval)
-    {
-        DebugPrintf(NO_PREFIX,
-                "Tss2_Sys_NV_DefineSpace FAILED!  Ret code 0x%04X\n", rval);
-        DebugPrintf(NO_PREFIX, "Error Message: %s\n",
-                GetErrMsgOfTPMResponseCode(rval));
-    }
-
-    /* 退出之前擦除内存中的密码副本 */
-    srand(time(NULL));
-    for (int i = 0; i < nvAuth.t.size; i++)
-    {
-        nvAuth.t.buffer[i] = (0xFF & rand());
-    }
-    nvAuth.t.size = 0;
-}
-
-void NVSpaceTest::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
-{
-    if (!this->pSysContext)
-    {
-        return;
-    }
-    /* 创建以下结构体作为 Tss2_Sys_NV_UndefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
-    TPMS_AUTH_COMMAND cmdAuthNVDefine;
-    TPMS_AUTH_COMMAND *commands[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
-
-    cmdAuthNVDefine.sessionHandle = TPM_RS_PW;
-    memset(&(cmdAuthNVDefine.sessionAttributes), 0x00,
-            sizeof(cmdAuthNVDefine.sessionAttributes));
-    cmdAuthNVDefine.nonce.t.size = 0;
-    cmdAuthNVDefine.hmac.t.size = 0;
-    commands[0] = &cmdAuthNVDefine;
-    cmdAuthsArray.cmdAuthsCount = 1;
-    cmdAuthsArray.cmdAuths = &(commands[0]);
-
-    TPM_RC rval = Tss2_Sys_NV_UndefineSpace(pSysContext, TPM_RH_PLATFORM,
-            nvIndex, &cmdAuthsArray, NULL);
-    if (rval)
-    {
-        DebugPrintf(NO_PREFIX,
-                "Tss2_Sys_NV_UndefineSpace FAILED!  Ret code 0x%04X\n", rval);
-        // FIXME: Tss2_Sys_NV_UndefineSpace FAILED!  Ret code 0x028B
-    }
-    else
-    {
-        DebugPrintf(NO_PREFIX,
-                "Tss2_Sys_NV_UndefineSpace successfully in %s()\n", __func__);
-    }
-}
-
-void NVSpaceTest::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex)
-{
-    if (!this->pSysContext)
-    {
-        return;
-    }
-
-    /* 设置如何定义 NV 空间的参数 */
-    TPM2B_NV_PUBLIC publicInfo;
-
-    publicInfo.t.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
-            + sizeof(TPMA_NV) + sizeof(UINT16) + sizeof(UINT16);
-    publicInfo.t.nvPublic.nvIndex = nvIndex;
-    publicInfo.t.nvPublic.nameAlg = TPM_ALG_SHA1;
-
-    // First zero out attributes.
-    *(UINT32 *) &(publicInfo.t.nvPublic.attributes) = 0;
-
-    // Now set the attributes.
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PPREAD = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PPWRITE = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_WRITE_STCLEAR = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PLATFORMCREATE = 1;
-    publicInfo.t.nvPublic.authPolicy.t.size = 0;
-    publicInfo.t.nvPublic.dataSize = 32;
-
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
-    TPMS_AUTH_COMMAND sessionData;
-    TPMS_AUTH_COMMAND *sessionDataArray[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
-
-    sessionData.sessionHandle = TPM_RS_PW;
-    sessionData.nonce.t.size = 0;
-    sessionData.hmac.t.size = 0;
-    // Init session attributes
-    *((UINT8 *) ((void *) &sessionData.sessionAttributes)) = 0;
-
-    sessionDataArray[0] = &sessionData;
-    cmdAuthsArray.cmdAuths = &sessionDataArray[0];
-    cmdAuthsArray.cmdAuthsCount = 1;
-
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
-    TPMS_AUTH_RESPONSE sessionDataOut;
-    TPMS_AUTH_RESPONSE *sessionDataOutArray[1];
-    TSS2_SYS_RSP_AUTHS rspAuthsArray;
-
-    memset(&(sessionDataOut), 0x00, sizeof(sessionDataOut));
-    sessionDataOutArray[0] = &sessionDataOut;
-    rspAuthsArray.rspAuthsCount = 1;
-    rspAuthsArray.rspAuths = &(sessionDataOutArray[0]);
-
-    /* 指定密码 */
-    TPM2B_AUTH nvAuth;
-    nvAuth.t.size = 0;  // 不需要密码
-
-    /* System API 函数调用 */
-    TPM_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM_RH_PLATFORM,
-            &cmdAuthsArray, &nvAuth, &publicInfo, &rspAuthsArray);
-    if (rval)
-    {
-        DebugPrintf(NO_PREFIX,
-                "Tss2_Sys_NV_DefineSpace FAILED!  Ret code 0x%04X\n", rval);
-    }
-    else
-    {
-        DebugPrintf(NO_PREFIX, "Tss2_Sys_NV_DefineSpace successfully in %s()\n",
-                __func__);
-    }
-
-    /* 退出之前擦除内存中的密码副本 */
-    srand(time(NULL));
-    for (int i = 0; i < nvAuth.t.size; i++)
-    {
-        nvAuth.t.buffer[i] = (0xFF & rand());
-    }
-    nvAuth.t.size = 0;
-} // end defineNVSpaceWithoutPassword(nvIndex)
