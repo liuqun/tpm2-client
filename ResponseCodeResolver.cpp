@@ -85,6 +85,13 @@ const char *ResponseCodeResolver::msg()
             err.reason = "Parameter size error";
             err.suggestion =
                     "Check your command parameters which might be too long or too short.";
+        } else if ((rc & TPM_RC_S) && (rc & TPM_RC_BAD_AUTH))
+        {
+            err.reason = "Authorization failure";
+            err.suggestion = "Check your authorization handle, the handle may be wrong" \
+                    " or it does not require an authorization method as you provided." \
+                    " You may use an NV index as authHandle instead of TPM_RH_PLATFORM" \
+                    " and try to see whether you still get this error code.";
         }
     }
     else
@@ -94,6 +101,23 @@ const char *ResponseCodeResolver::msg()
             err.reason = "TPM has not been initialized";
             err.suggestion =
                     "A TPM2_Startup command MUST be performed before doing anything else.";
+        } else if (rc == TPM_RC_NV_UNINITIALIZED)
+        {
+            err.reason = "NV space has been defined but not initialized yet";
+            err.suggestion = "You may get this error code"\
+                    " because you have never successfully written anything into it.";
+        } else if (rc == TPM_RC_NV_RANGE)
+        {
+            err.reason = "The NV offset+size you specified is out of range";
+            err.suggestion ="";
+        }  else if (rc == TPM_RC_AUTH_MISSING)
+        {
+            err.reason = "Authorization parameter is needed by the TPM object that you are trying to access!";
+            err.suggestion ="";
+        } else if (rc == TPM_RC_NV_AUTHORIZATION)
+        {
+            err.reason = "Authorization rejected";
+            err.suggestion ="";
         }
     }
     n = SIZE;

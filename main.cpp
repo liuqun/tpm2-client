@@ -273,10 +273,76 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
         nvWriteData.t.buffer[i] = i + 1;
     }
 
+    DebugPrintf(NO_PREFIX,
+            "Try to invoke NV_DefineSpace() with password=\"%s\"\n", password);
     try
     {
-        master.defineNVSpaceWithPassword(NV_INDEX, password, NV_SPACE_SIZE);  // 定义一块 NV 区域用于测试
+        master.defineNVSpaceWithPassword(NV_INDEX, password,
+                nvWriteData.t.size);  // 定义一块 NV 区域用于测试
+
+        DebugPrintf(NO_PREFIX, "NV_DefineSpace() successfully.\n");
+        DebugPrintf(NO_PREFIX,
+                "Next: Try to write an read with this NV index(=0x%08X)\n",
+                NV_INDEX);
+
+        /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
+        TPMS_AUTH_COMMAND cmdAuth;
+        TPMS_AUTH_COMMAND *cmdAuths[1];
+        TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+
+        cmdAuth.sessionHandle = TPM_RS_PW;
+        cmdAuth.nonce.t.size = 0;
+        cmdAuth.hmac.t.size = strlen(password);
+        memcpy(cmdAuth.hmac.t.buffer, password, cmdAuth.hmac.t.size);
+        memset(&(cmdAuth.sessionAttributes), 0x00,
+                sizeof(cmdAuth.sessionAttributes));
+        cmdAuths[0] = &cmdAuth;
+        cmdAuthsArray.cmdAuths = cmdAuths;
+        cmdAuthsArray.cmdAuthsCount = 1;
+
+        /* 执行第 1 次写入操作 */
+        TPM_RC rc1passwd;
+        rc1passwd = Tss2_Sys_NV_Write(pSysContext, NV_INDEX, NV_INDEX,
+                &cmdAuthsArray, &nvWriteData, 0, NULL);
+        if (rc1passwd)
+        {
+            DebugPrintf(NO_PREFIX, "Write ERROR: %s\n",
+                    GetErrMsgOfTPMResponseCode(rc1passwd));
+        }
+        else
+        {
+            DebugPrintf(NO_PREFIX, "Write success: input data={ ");
+            for (int i = 0; i < nvWriteData.t.size; i++)
+            {
+                DebugPrintf(NO_PREFIX, "0x%02X, ",
+                        0xFF & nvWriteData.t.buffer[i]);
+            }
+            DebugPrintf(NO_PREFIX, "}\n");
+        }
+        /* 执行第 1 次读取操作 */
+        TPM2B_MAX_NV_BUFFER dataOut1passwd;
+        dataOut1passwd.t.size = sizeof(TPM2B_MAX_NV_BUFFER) - 2;
+        rc1passwd = Tss2_Sys_NV_Read(pSysContext, NV_INDEX, NV_INDEX,
+                &cmdAuthsArray, nvWriteData.t.size, 0, &dataOut1passwd,
+                NULL);
+        if (rc1passwd)
+        {
+            DebugPrintf(NO_PREFIX, "Read ERROR: %s\n",
+                    GetErrMsgOfTPMResponseCode(rc1passwd));
+        }
+        else
+        {
+            int len = dataOut1passwd.t.size;
+            DebugPrintf(NO_PREFIX, "Read success: output data={ ");
+            for (int i = 0; i < len; i++)
+            {
+                DebugPrintf(NO_PREFIX, "0x%02X, ",
+                        0xFF & dataOut1passwd.t.buffer[i]);
+            }
+            DebugPrintf(NO_PREFIX, "}\n");
+        }
         master.undefineNVSpace(NV_INDEX);  // 测试结束时清除之前定义的 NV 区域
+        DebugPrintf(NO_PREFIX, "NV_UndefineSpace() successfully. The end.\n");
     } catch (const char *ErrMsg)
     {
         DebugPrintf(NO_PREFIX, "Error: %s\n", ErrMsg);
