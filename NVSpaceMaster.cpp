@@ -29,7 +29,7 @@ void NVSpaceMaster::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
 {
     if (!this->pSysContext)
     {
-        return;
+        throw "Uninitialized Context!";
     }
 
     /* 设置如何定义 NV 空间的参数 */
@@ -107,7 +107,7 @@ void NVSpaceMaster::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
 {
     if (!this->pSysContext)
     {
-        return;
+        throw "Uninitialized Context!";
     }
 
     /* 创建以下结构体作为 Tss2_Sys_NV_UndefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
@@ -138,7 +138,7 @@ void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
 {
     if (!this->pSysContext)
     {
-        return;
+        throw "Uninitialized Context!";
     }
 
     /* 设置如何定义 NV 空间的参数 */
