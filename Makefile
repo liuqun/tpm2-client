@@ -29,19 +29,16 @@ COMPILE_cpp = $(COMPILE.cpp)
 main: main.o tcti_util.o ResponseCodeResolver.o
 	$(CXX) $(LD_FLAGS) -o $@ $^ $(LIBS)
 
-%.o: %.c
-	$(COMPILE_c) -o $@ $<
-
 %.o: %.c %.h
 	$(COMPILE_c) -o $@ $<
 
-%.o: %.cpp
-	$(COMPILE_cpp) -o $@ $<
+%.o: %.c
+	$(COMPILE_c) -o $@ $<
 
 %.o: %.cpp %.h
 	$(COMPILE_cpp) -o $@ $<
 
-ResponseCodeResolver.o: ResponseCodeResolver.cpp ResponseCodeResolver.h
+%.o: %.cpp
 	$(COMPILE_cpp) -o $@ $<
 
 .PHONY: clean
