@@ -41,6 +41,9 @@ main: main.o tcti_util.o ResponseCodeResolver.o
 %.o: %.cpp %.h
 	$(COMPILE_cpp) -o $@ $<
 
+ResponseCodeResolver.o: ResponseCodeResolver.cpp ResponseCodeResolver.h
+	$(COMPILE_cpp) -o $@ $<
+
 .PHONY: clean
 clean:
 	$(RM) *.o
