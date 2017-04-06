@@ -265,7 +265,7 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
     DebugPrintf(NO_PREFIX, "Next: Define password protected NV Space\n");
 
     const TPMI_RH_NV_INDEX NV_INDEX = 0x01500020;
-    const char password[] = "My hard-coded password";
+    const char password[] = "My password";
     TPM2B_MAX_NV_BUFFER nvWriteData;
     nvWriteData.t.size = 2;
     for (int i = 0; i < nvWriteData.t.size; i++)
@@ -338,6 +338,32 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
             {
                 DebugPrintf(NO_PREFIX, "0x%02X, ",
                         0xFF & dataOut1passwd.t.buffer[i]);
+            }
+            DebugPrintf(NO_PREFIX, "}\n");
+        }
+        /* 执行第 2 次读取操作, 使用错误密码 */
+        const char *wrongPassword = "wrong passwd";
+        cmdAuth.hmac.t.size = strlen(wrongPassword);
+        memcpy(cmdAuth.hmac.t.buffer, wrongPassword, cmdAuth.hmac.t.size);
+        TPM_RC rc2passwd;
+        TPM2B_MAX_NV_BUFFER dataOut2passwd;
+        dataOut2passwd.t.size = sizeof(TPM2B_MAX_NV_BUFFER) - 2;
+        rc2passwd = Tss2_Sys_NV_Read(pSysContext, NV_INDEX, NV_INDEX,
+                &cmdAuthsArray, nvWriteData.t.size, 0, &dataOut2passwd,
+                NULL);
+        if (rc2passwd)
+        {
+            DebugPrintf(NO_PREFIX, "Read ERROR: %s\n",
+                    GetErrMsgOfTPMResponseCode(rc2passwd));
+        }
+        else
+        {
+            int len = dataOut2passwd.t.size;
+            DebugPrintf(NO_PREFIX, "Read success: output data={ ");
+            for (int i = 0; i < len; i++)
+            {
+                DebugPrintf(NO_PREFIX, "0x%02X, ",
+                        0xFF & dataOut2passwd.t.buffer[i]);
             }
             DebugPrintf(NO_PREFIX, "}\n");
         }
