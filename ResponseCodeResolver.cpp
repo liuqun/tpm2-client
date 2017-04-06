@@ -80,7 +80,7 @@ const char *ResponseCodeResolver::msg()
     err.suggestion = "";
     if (rc & RC_FMT1)
     {
-        if ((rc & TPM_RC_P) && ((rc & 0xff) == TPM_RC_SIZE))
+        if ((rc & 0x0FF) == (TPM_RC_P | TPM_RC_SIZE))
         {
             err.reason = "Parameter size error";
             err.suggestion =
@@ -167,7 +167,7 @@ const char *NVSpaceRelatedResponseCodeResolver::msg()
     err.suggestion = "";
     if (rc & RC_FMT1)
     {
-        if ((rc & TPM_RC_P) && ((rc & 0xff) == TPM_RC_SIZE))
+        if ((rc & 0x0FF) == (TPM_RC_P | TPM_RC_SIZE))
         {
             err.reason = "Parameter size error";
             err.suggestion = "Your password might be too long,"
