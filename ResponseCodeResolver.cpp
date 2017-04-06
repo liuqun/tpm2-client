@@ -66,7 +66,7 @@ const char *ResponseCodeResolver::msg()
     struct
     {
         const char *reason;
-        const char *suggestion;
+        const char *detail;
     } err;
     TPM_RC rc;
 
@@ -77,51 +77,67 @@ const char *ResponseCodeResolver::msg()
     }
 
     err.reason = "Unknown Response Code";
-    err.suggestion = "";
+    err.detail = "";
     if (rc & RC_FMT1)
     {
         if ((rc & 0x0FF) == (TPM_RC_P | TPM_RC_SIZE))
         {
             err.reason = "Parameter size error";
-            err.suggestion =
-                    "Check your command parameters which might be too long or too short.";
-        } else if ((rc & TPM_RC_S) && ((rc & 0xff) == TPM_RC_AUTH_FAIL))
+            err.detail = "Check your command parameters which might be too long or too short.";
+        }
+        else if ((rc & TPM_RC_S) && ((rc & 0x0FF) == TPM_RC_AUTH_FAIL))
         {
             err.reason = "Authorization failure";
-            err.suggestion = "Check your authorization handle, the handle may be wrong" \
+            err.detail = "If you have provided the correct authorization but still get" \
+                    " this error, check your authorization handle, the handle may be wrong" \
                     " or it does not require an authorization method as you provided." \
-                    " You may use an NV index as authHandle instead of TPM_RH_PLATFORM" \
+                    " You may use an NV index as @authHandle instead of TPM_RH_PLATFORM" \
                     " and try to see whether you still get this error code.";
         }
     }
-    else
+    else if (rc & 0x0100)
     {
         if (rc == TPM_RC_INITIALIZE)
         {
             err.reason = "TPM has not been initialized";
-            err.suggestion =
+            err.detail =
                     "A TPM2_Startup command MUST be performed before doing anything else.";
-        } else if (rc == TPM_RC_NV_UNINITIALIZED)
+        }
+        else if (rc == TPM_RC_NV_UNINITIALIZED)
         {
             err.reason = "NV space has been defined but not initialized yet";
-            err.suggestion = "You may get this error code"\
+            err.detail = "When trying to read NV index, you may get this error code"
                     " because you have never successfully written anything into it.";
-        } else if (rc == TPM_RC_NV_RANGE)
+        }
+        else if (rc == TPM_RC_NV_RANGE)
         {
-            err.reason = "The NV offset+size you specified is out of range";
-            err.suggestion ="";
-        }  else if (rc == TPM_RC_AUTH_MISSING)
+            err.reason = "NV range exceeded";
+            err.detail = "The NV offset+size you specified is out of range";
+        }
+        else if (rc == TPM_RC_AUTH_MISSING)
         {
-            err.reason = "Authorization parameter is needed by the TPM object that you are trying to access!";
-            err.suggestion ="";
-        } else if (rc == TPM_RC_NV_AUTHORIZATION)
+            err.reason = "Authorization area is missing";
+            err.detail = "Authorization is needed by the TPM object that you are trying to access!";
+        }
+        else if (rc == TPM_RC_NV_AUTHORIZATION)
         {
             err.reason = "Authorization rejected";
-            err.suggestion ="";
+            err.detail = "";
+        }
+        else if (rc == TPM_RC_LOCKOUT)
+        {
+            err.reason = "TPM has fallen into DA lockout mode";
+            err.detail = "In DA lockout mode, any authorization attempts on objects subject to the DA protection"
+                    " will be rejected, including those already authorized clients";
         }
     }
+    else
+    {
+        err.reason = "TPM 1.2 compatible Response Code";
+        err.detail = "";
+    }
     n = SIZE;
-    snprintf(msg, n, "0x%X:%s. %s", rc, err.reason, err.suggestion);
+    snprintf(msg, n, "%s (Code=0x%X): %s", err.reason, rc, err.detail);
     return msg;
 }
 
@@ -152,7 +168,7 @@ const char *NVSpaceRelatedResponseCodeResolver::msg()
     struct
     {
         const char *reason;
-        const char *suggestion;
+        const char *detail;
     } err;
     TPM_RC rc;
 
@@ -164,15 +180,14 @@ const char *NVSpaceRelatedResponseCodeResolver::msg()
 
     n = SIZE;
     err.reason = "Unknown Response Code";
-    err.suggestion = "";
+    err.detail = "";
     if (rc & RC_FMT1)
     {
         if ((rc & 0x0FF) == (TPM_RC_P | TPM_RC_SIZE))
         {
             err.reason = "Parameter size error";
-            err.suggestion = "Your password might be too long,"
-                    " please check the TPM's capability specifications";
-            snprintf(msg, n, "0x%X:%s. %s", rc, err.reason, err.suggestion);
+            err.detail = "Your password might be too long, please check the TPM's capability specifications";
+            snprintf(msg, n, "%s (Code=0x%X): %s", err.reason, rc, err.detail);
             return msg;
         }
     }
