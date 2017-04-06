@@ -80,12 +80,12 @@ const char *ResponseCodeResolver::msg()
     err.suggestion = "";
     if (rc & RC_FMT1)
     {
-        if ((rc & TPM_RC_P) && (rc & TPM_RC_SIZE))
+        if ((rc & TPM_RC_P) && ((rc & 0xff) == TPM_RC_SIZE))
         {
             err.reason = "Parameter size error";
             err.suggestion =
                     "Check your command parameters which might be too long or too short.";
-        } else if ((rc & TPM_RC_S) && (rc & TPM_RC_BAD_AUTH))
+        } else if ((rc & TPM_RC_S) && ((rc & 0xff) == TPM_RC_AUTH_FAIL))
         {
             err.reason = "Authorization failure";
             err.suggestion = "Check your authorization handle, the handle may be wrong" \
@@ -167,7 +167,7 @@ const char *NVSpaceRelatedResponseCodeResolver::msg()
     err.suggestion = "";
     if (rc & RC_FMT1)
     {
-        if ((rc & TPM_RC_P) && (rc & TPM_RC_SIZE))
+        if ((rc & TPM_RC_P) && ((rc & 0xff) == TPM_RC_SIZE))
         {
             err.reason = "Parameter size error";
             err.suggestion = "Your password might be too long,"
