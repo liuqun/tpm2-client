@@ -267,7 +267,8 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
             &keyName, //
             &rspAuthsArray //
             );
-    if (rc) {
+    if (rc)
+    {
         fprintf(stderr, "ERROR: rc=0x%X\n", rc);
         if (TSS2_SYS_RC_BAD_VALUE == rc)
         {
