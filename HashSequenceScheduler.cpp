@@ -40,7 +40,7 @@ void HashSequenceScheduler::start(TPMI_ALG_HASH algorithm,
 
     m_savedSequenceHandle = 0x0;  // 方便调试
     cmd.prepareHashAlgorithm(algorithm);
-    cmd.prepareOptionalAuthValue(pAuthValue->t.buffer, pAuthValue->t.size);
+    cmd.prepareOptionalAuthValueForHashSequenceHandle(pAuthValue->t.buffer, pAuthValue->t.size);
     try {
         cmd.execute(m_pSysContext);
     } catch (TSS2_RC rc) {
@@ -139,7 +139,7 @@ TPMI_ALG_HASH HashSequenceStartCommand::prepareHashAlgorithm(TPMI_ALG_HASH algor
     return hashAlg;
 }
 
-const TPM2B_AUTH& HashSequenceStartCommand::prepareOptionalAuthValue(const BYTE value[], UINT16 size) {
+const TPM2B_AUTH& HashSequenceStartCommand::prepareOptionalAuthValueForHashSequenceHandle(const BYTE value[], UINT16 size) {
     if (size > sizeof(auth.t.buffer)) {
         /* 自动截断并舍弃超过长度上限的数据 */
         size = sizeof(auth.t.buffer);

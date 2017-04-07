@@ -56,7 +56,7 @@ public:
     /**
      *
      */
-    const TPM2B_AUTH& prepareOptionalAuthValue(const BYTE value[], UINT16 size);
+    const TPM2B_AUTH& prepareOptionalAuthValueForHashSequenceHandle(const BYTE value[], UINT16 size);
 
     /**
      *
