@@ -473,49 +473,29 @@ public:
 
 void HashSequenceScheduler::complete(TPM2B_DIGEST *result)
 {
-    TPM_RC rc;
-    TPM2B emptyBuffer;
-    TPM2B_MAX_BUFFER *pEmptyBuffer;
-    TPMT_TK_HASHCHECK validation;
-
-    TPMS_AUTH_COMMAND sessionData;
-    TPMS_AUTH_COMMAND *cmdAuths[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
-    TPMS_AUTH_RESPONSE sessionDataOut;
-    TPMS_AUTH_RESPONSE *rspAuths[1];
-    TSS2_SYS_RSP_AUTHS rspAuthsArray;
-
     if (!m_started)
     {
         throw "Error: You should call method start() and update() before complete()";
     }
 
-    sessionData.sessionHandle = TPM_RS_PW;
-    sessionData.nonce.t.size = 0;
-    sessionData.hmac.t.size = m_savedAuthValue.t.size; // 取出之前保存的 auth value 数据块
-    memcpy(sessionData.hmac.t.buffer, m_savedAuthValue.t.buffer,
-            m_savedAuthValue.t.size);
-    memset(&(sessionData.sessionAttributes), 0x00, sizeof(TPMA_SESSION));
-
-    cmdAuths[0] = &sessionData;
-    cmdAuthsArray.cmdAuths = cmdAuths;
-    cmdAuthsArray.cmdAuthsCount = 1;
-
-    rspAuths[0] = &sessionDataOut;
-    rspAuthsArray.rspAuths = rspAuths;
-    rspAuthsArray.rspAuthsCount = 1;
-
-    emptyBuffer.size = 0;
-    pEmptyBuffer =
-            static_cast<TPM2B_MAX_BUFFER *>(static_cast<void *>(&emptyBuffer));
-    rc = Tss2_Sys_SequenceComplete(m_pSysContext, m_savedSequenceHandle,
-            &cmdAuthsArray, pEmptyBuffer, TPM_RH_PLATFORM, result, &validation,
-            &rspAuthsArray);
-    if (rc)
-    {
+    HashSequenceCompleteCommand cmd;
+    cmd.setSequenceHandleWithOptionalAuthValue(m_savedSequenceHandle, m_savedAuthValue.t.buffer, m_savedAuthValue.t.size);
+    try {
+        cmd.execute(m_pSysContext);
+    } catch (TSS2_RC rc) {
+        /* 将错误码转换为字符串内容, 之后再向上层抛出异常 */
         throw GetErrMsgOfTPMResponseCode(rc);
     }
 
+    const TPM2B_DIGEST& digest = cmd.getResponseDigest();
+
+    UINT16 n = digest.t.size;
+    if (n > sizeof(result->t.buffer))
+    {
+        n = sizeof(result->t.buffer);
+    }
+    result->t.size = n;
+    memcpy(result->t.buffer, digest.t.buffer, n);
     m_started = false;
     m_savedSequenceHandle = 0x0;  // 方便调试
 }
