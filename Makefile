@@ -17,8 +17,9 @@ LOCAL_INCLUDE_DIR := $(PREFIX)/include
 SAPI_LIB := $(LOCAL_LIB_DIR)/libsapi.a
 TCTI_DEVICE_LIB := $(LOCAL_LIB_DIR)/libtcti-device.a
 TCTI_SOCKET_LIB := $(LOCAL_LIB_DIR)/libtcti-socket.a
+MARSHAL_LIB := $(LOCAL_LIB_DIR)/libmarshal.a
 
-LIBS := $(SAPI_LIB) $(TCTI_DEVICE_LIB) $(TCTI_SOCKET_LIB)
+LIBS := $(SAPI_LIB) $(TCTI_DEVICE_LIB) $(TCTI_SOCKET_LIB) $(MARSHAL_LIB)
 CFLAGS := -g -O0 \
           -Wall -Wextra \
           -I$(LOCAL_INCLUDE_DIR)
