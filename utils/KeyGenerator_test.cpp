@@ -221,8 +221,8 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
     inPublic.t.publicArea.unique.rsa.t.size = 0;
 
     //printf("其他输入参数\n");
-    TPM2B_DATA outsizeInfo;
-    outsizeInfo.t.size = 0;
+    TPM2B_DATA outsideInfo;
+    outsideInfo.t.size = 0;
     TPML_PCR_SELECTION creationPCR;
     creationPCR.count = 0;
 
@@ -255,7 +255,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
             &cmdAuthsArray, //
             &inSensitive, //
             &inPublic, //
-            &outsizeInfo, //
+            &outsideInfo, //
             &creationPCR, //
             // 以上为输入参数
             // 以下为输出参数
