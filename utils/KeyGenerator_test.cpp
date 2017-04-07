@@ -11,6 +11,7 @@ using namespace std;
 /* 自定义函数 */
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext);
 static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext);
+static void CreateChildNode(TSS2_SYS_CONTEXT *pSysContext, TPM_HANDLE parent, const TPM2B_AUTH *pParentNodeAuth);
 
 extern "C"
 {
@@ -315,6 +316,133 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         }
         printf("\n");
     }
+    CreateChildNode(pSysContext, handle2048rsa, &(inSensitive.t.sensitive.userAuth));
+}
+
+static void CreateChildNode(TSS2_SYS_CONTEXT *pSysContext, TPM_HANDLE parent, const TPM2B_AUTH *pParentNodeAuth)
+{
+    TSS2_SYS_CONTEXT *sysContext = pSysContext;
+
+    const TPMI_DH_OBJECT parentHandle = (const TPMI_DH_OBJECT) parent;
+    printf("We will create a child key node under parentHandle(0x%08X).\n",
+            parentHandle);
+
+    //printf("访问父节点(句柄=0x%08X)所提供的授权信息\n", parentHandle);
+    TPMS_AUTH_COMMAND sessionData;
+    TPMS_AUTH_COMMAND *cmdAuths[1];
+    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+    sessionData.sessionHandle = TPM_RS_PW;
+    sessionData.nonce.t.size = 0;
+    sessionData.sessionAttributes.val = (UINT32) 0;
+    sessionData.hmac.t.size = pParentNodeAuth->t.size; // 访问父节点需要填写授权密码
+    memcpy(sessionData.hmac.t.buffer, pParentNodeAuth->t.buffer, sessionData.hmac.t.size);
+    cmdAuths[0] = &sessionData;
+    cmdAuthsArray.cmdAuths = cmdAuths;
+    cmdAuthsArray.cmdAuthsCount = 1;
+
+    //printf("设置密钥的敏感数据, 其中包含随意设置的子节点的密码, 仅用于后续功能测试\n");
+    TPM2B_SENSITIVE_CREATE  inSensitive;
+    inSensitive.t.sensitive.userAuth.t.size = strlen("child");
+    inSensitive.t.sensitive.userAuth.t.buffer[0] = 'c';
+    inSensitive.t.sensitive.userAuth.t.buffer[1] = 'h';
+    inSensitive.t.sensitive.userAuth.t.buffer[2] = 'i';
+    inSensitive.t.sensitive.userAuth.t.buffer[3] = 'l';
+    inSensitive.t.sensitive.userAuth.t.buffer[3] = 'd';
+    if (inSensitive.t.sensitive.userAuth.t.size > 0)
+    {
+        inSensitive.t.size += sizeof(UINT16) + inSensitive.t.sensitive.userAuth.t.size;
+    }
+    inSensitive.t.sensitive.data.t.size = 0; // 附加敏感数据, 长度可以为空
+    if (inSensitive.t.sensitive.data.t.size > 0)
+    {
+        inSensitive.t.size += sizeof(UINT16) + inSensitive.t.sensitive.data.t.size;
+    }
+
+    //printf("选择密钥类型和算法: \n");
+    TPM2B_PUBLIC inPublic;
+    inPublic.t.publicArea.type = TPM_ALG_KEYEDHASH;
+    if (TPM_ALG_KEYEDHASH == inPublic.t.publicArea.type)
+    {
+        printf("Key type: Keyed-hashing.\n");
+    }
+    inPublic.t.publicArea.nameAlg = TPM_ALG_SHA1;
+    inPublic.t.publicArea.objectAttributes.val = (UINT32) 0; // 先清空全部标记位, 然后逐个设置
+    inPublic.t.publicArea.objectAttributes.fixedTPM = 1;
+    inPublic.t.publicArea.objectAttributes.fixedParent = 1;
+    inPublic.t.publicArea.objectAttributes.sensitiveDataOrigin = 1;
+    inPublic.t.publicArea.objectAttributes.userWithAuth = 1;
+    inPublic.t.publicArea.objectAttributes.restricted = 1;
+    inPublic.t.publicArea.objectAttributes.decrypt = 0;
+    inPublic.t.publicArea.objectAttributes.sign = 1; // 用于签名
+    inPublic.t.publicArea.authPolicy.t.size = 0;
+    inPublic.t.publicArea.parameters.keyedHashDetail.scheme.scheme = TPM_ALG_HMAC;
+    inPublic.t.publicArea.parameters.keyedHashDetail.scheme.details.hmac.hashAlg = TPM_ALG_SHA1;
+    inPublic.t.publicArea.unique.keyedHash.t.size = 0;
+
+    //printf("其他输入参数\n");
+    TPM2B_DATA outsideInfo;
+    outsideInfo.t.size = 0;
+    TPML_PCR_SELECTION creationPCR;
+    creationPCR.count = 0;
+
+    //printf("输出参数-1\n");
+    TPM2B_PRIVATE outPrivate;
+    outPrivate.t.size = sizeof(TPM2B_PRIVATE) - sizeof(UINT16);
+
+    //printf("输出参数-2\n");
+    TPM2B_PUBLIC outPublic;
+    outPublic.t.size = 0; // 必须被初始化为 0, 否则报错 0x8000B: TSS2_SYS_RC_BAD_VALUE
+
+    //printf("输出参数-3\n");
+    TPM2B_CREATION_DATA creationData;
+    creationData.t.size = 0; // 必须被初始化为 0, 否则报错 0x8000B: TSS2_SYS_RC_BAD_VALUE
+
+    //printf("输出参数-4\n");
+    TPM2B_DIGEST creationHash;
+    creationHash.t.size = sizeof(TPM2B_DIGEST) - sizeof(UINT16);
+
+    //printf("输出参数-5\n");
+    TPMT_TK_CREATION creationTicket;
+    creationTicket.tag = 0;
+    creationTicket.hierarchy = 0x0;
+    creationTicket.digest.t.size = sizeof(TPM2B_DIGEST) - sizeof(UINT16);
+
+    //printf("输出参数-6\n");
+    TPMS_AUTH_RESPONSE sessionDataOut;
+    TPMS_AUTH_RESPONSE *rspAuths[1];
+    TSS2_SYS_RSP_AUTHS rspAuthsArray;
+    rspAuths[0] = &sessionDataOut;
+    rspAuthsArray.rspAuths = rspAuths;
+    rspAuthsArray.rspAuthsCount = 1;
+
+    UINT32 rc = Tss2_Sys_Create(
+            sysContext, //
+            parentHandle, //
+            &cmdAuthsArray, //
+            &inSensitive, //
+            &inPublic, //
+            &outsideInfo, //
+            &creationPCR, //
+            // 以上为输入参数
+            // 以下为输出参数
+            &outPrivate, // 1
+            &outPublic, // 2
+            &creationData, // 3
+            &creationHash, // 4
+            &creationTicket, // 5
+            &rspAuthsArray // 6
+            );
+    if (rc)
+    {
+        fprintf(stderr, "ERROR: %s():%d: Tss2_Sys_Create returns rc=0x%X\n", __func__, __LINE__, rc);
+        if (TPM_RC_LOCKOUT == rc)
+        {
+            fprintf(stderr, "TPM_RC_LOCKOUT=0x%X\n", TPM_RC_LOCKOUT);
+            fprintf(stderr, "Wrong password is used for too many times\n");
+        }
+        return;
+    }
+    printf("Child key node has been created successfully.\n");
 }
 
 /* 调试专用函数 */
