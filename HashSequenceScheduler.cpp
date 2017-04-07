@@ -255,14 +255,7 @@ public:
 
 void HashSequenceScheduler::update(const TPM2B_MAX_BUFFER *pMessagePacket)
 {
-    TPM_RC rc;
-    TPM2B_MAX_BUFFER copy;
-    TPMS_AUTH_COMMAND sessionData;
-    TPMS_AUTH_COMMAND *cmdAuths[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
-    TPMS_AUTH_RESPONSE sessionDataOut;
-    TPMS_AUTH_RESPONSE *rspAuths[1];
-    TSS2_SYS_RSP_AUTHS rspAuthsArray;
+    HashSequenceUpdateCommand cmd;
 
     if (!m_started)
     {
@@ -277,27 +270,13 @@ void HashSequenceScheduler::update(const TPM2B_MAX_BUFFER *pMessagePacket)
         throw "Warning: Unable to handle single data block which is larger than MAX_DIGEST_BUFFER";
     }
 
-    copy.t.size = pMessagePacket->t.size;
-    memcpy(copy.t.buffer, pMessagePacket->t.buffer, copy.t.size);
-    sessionData.sessionHandle = TPM_RS_PW;
-    sessionData.nonce.t.size = 0;
-    sessionData.hmac.t.size = m_savedAuthValue.t.size; // 取出之前保存的 auth value 数据块
-    memcpy(sessionData.hmac.t.buffer, m_savedAuthValue.t.buffer,
-            m_savedAuthValue.t.size);
-    memset(&(sessionData.sessionAttributes), 0x00, sizeof(TPMA_SESSION));
-
-    cmdAuths[0] = &sessionData;
-    cmdAuthsArray.cmdAuths = cmdAuths;
-    cmdAuthsArray.cmdAuthsCount = 1;
-
-    rspAuths[0] = &sessionDataOut;
-    rspAuthsArray.rspAuths = rspAuths;
-    rspAuthsArray.rspAuthsCount = 1;
-
-    rc = Tss2_Sys_SequenceUpdate(m_pSysContext, m_savedSequenceHandle,
-            &cmdAuthsArray, &copy, &rspAuthsArray);
-    if (rc)
-    {
+    cmd.setSequenceHandleWithOptionalAuthValue(m_savedSequenceHandle, m_savedAuthValue.t.buffer, m_savedAuthValue.t.size);
+    cmd.prepareData(pMessagePacket->t.buffer, pMessagePacket->t.size);
+    try {
+        cmd.execute(m_pSysContext);
+    } catch (TSS2_RC rc) {
+        m_started = false;
+        /* 将错误码转换为字符串内容, 之后再向上层抛出异常 */
         throw GetErrMsgOfTPMResponseCode(rc);
     }
 }
