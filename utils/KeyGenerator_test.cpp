@@ -277,6 +277,13 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         return;
     }
     printf("New key successfully created in NULL hierarchy (RSA 2048).  Handle: 0x%8.8x\n", handle2048rsa);
+    printf("keyName.t.size=0x%d\n", keyName.t.size);
+    printf("keyName data: ");
+    for (size_t i=0; i<keyName.t.size; i++)
+    {
+        printf("0x%02X,", keyName.t.name[i]);
+    }
+    printf("\n");
     int printfNameOfHandle = 1;
     TPM_HANDLE objectHandle = handle2048rsa;
     if (printfNameOfHandle)
