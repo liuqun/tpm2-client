@@ -252,39 +252,63 @@ static void RunDefaultTestCase(TSS2_SYS_CONTEXT *pSysContext)
         0xde, 0xad, 0xbe, 0xef,
     };
 
-    TPM2B_DIGEST resultDigest;
-    resultDigest.t.size = 0;  // 清除内存中的无效数据
-    TPM2B_MAX_BUFFER package;
-    size_t n;
-    const uint8_t *p;
+    BYTE passwordAuthValue[] = "12345678901234567890abc";
+    UINT16 passwordLen = strlen((const char *) passwordAuthValue); // 大于20字节
+    HashSequenceStartCommand hashStart;
+    HashSequenceUpdateCommand hashUpdate;
+    HashSequenceCompleteCommand hashComplete;
 
+    hashStart.prepareHashAlgorithm(TPM_ALG_SHA1);
+    hashStart.prepareOptionalAuthValueForHashSequenceHandle(passwordAuthValue, passwordLen);
+    printf("Try to create a new HashSequence.\n");
     try
     {
-        HashSequenceScheduler scheduler(pSysContext);
-        scheduler.start(TPM_ALG_SHA1, NULL);
-
-        p = memoryToHash;
-        n = sizeof(memoryToHash);
-        while (n > MAX_DIGEST_BUFFER)  // 待处理的字节数 n 超过缓冲区最大容量时, 分多轮处理
-        {
-            package.t.size = MAX_DIGEST_BUFFER;
-            memcpy(package.t.buffer, p, MAX_DIGEST_BUFFER);
-            scheduler.update(&package);
-            n -= MAX_DIGEST_BUFFER;  // 待处理的字节数 n 每轮递减若干字节
-            p += MAX_DIGEST_BUFFER;  // 指针偏移量每轮向后递增若干字节
-        }
-        // 最后一轮处理
-        memcpy(package.t.buffer, p, n);
-        package.t.size = n;
-        scheduler.update(&package);
-        // 取回哈希摘要结果
-        memset(&resultDigest, 0x00, sizeof(TPM2B_DIGEST));
-        resultDigest.t.size = sizeof(TPM2B_DIGEST) - 2;
-        scheduler.complete(&resultDigest);
-    } catch (const char *err)
+        hashStart.execute(pSysContext);
+    } catch (TSS2_RC err)
     {
-        fprintf(stderr, "%s", err);
+        fprintf(stderr, "hashStart.execute() throws err=0x%X\n", err);
+        return;
     }
+    TPM_HANDLE seqHandle = hashStart.getHashSequenceHandle();
+    hashUpdate.setSequenceHandleWithOptionalAuthValue(seqHandle, passwordAuthValue, passwordLen);
+    hashComplete.setSequenceHandleWithOptionalAuthValue(seqHandle, passwordAuthValue, passwordLen);
+    printf("Successfully created sequenceHandle=0x%08X:\n", seqHandle);
+
+    // 对大于 1024 字节的原始数据, 需要分多轮完成哈希计算
+    size_t n;
+    const uint8_t *p;
+    p = memoryToHash;
+    n = sizeof(memoryToHash);
+    while (n > MAX_DIGEST_BUFFER)  // 待处理的字节数 n 超过缓冲区最大容量时, 分多轮处理
+    {
+        hashUpdate.prepareData(p, MAX_DIGEST_BUFFER);
+        try
+        {
+            hashUpdate.execute(pSysContext);
+        } catch (TSS2_RC err)
+        {
+            fprintf(stderr, "hashUpdate.execute() throws err=0x%X\n", err);
+            return;
+        }
+        n -= MAX_DIGEST_BUFFER;  // 待处理的字节数 n 每轮递减若干字节
+        p += MAX_DIGEST_BUFFER;  // 指针偏移量每轮向后递增若干字节
+    }
+
+    // 最后一轮处理
+    if (n > 0)
+    {
+        hashComplete.prepareFinalDataPack(p, n);
+    }
+    try
+    {
+        hashComplete.execute(pSysContext);
+    } catch (TSS2_RC err)
+    {
+        fprintf(stderr, "hashComplete.execute() throws err=0x%X\n", err);
+        return;
+    }
+    const TPM2B_DIGEST& resultDigest =
+            hashComplete.getResponseDigest();
 
     printf("SHA1 result:\n");
     for (size_t i = 0; i < resultDigest.t.size; i++)
