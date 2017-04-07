@@ -85,7 +85,7 @@ public:
 void HashSequenceScheduler::start(TPMI_ALG_HASH algorithm,
         TPM2B_AUTH *pAuthValue)
 {
-    TPM_RC rc;
+    HashSequenceStartCommand cmd;
 
     if (TPM_ALG_NULL == algorithm)
     {
@@ -112,12 +112,16 @@ void HashSequenceScheduler::start(TPMI_ALG_HASH algorithm,
     }
 
     m_savedSequenceHandle = 0x0;  // 方便调试
-    rc = Tss2_Sys_HashSequenceStart(m_pSysContext, NULL, pAuthValue, algorithm,
-            &m_savedSequenceHandle, NULL);
-    if (rc)
-    {
+    cmd.prepareHashAlgorithm(algorithm);
+    cmd.prepareOptionalAuthValue(pAuthValue->t.buffer, pAuthValue->t.size);
+    try {
+        cmd.execute(m_pSysContext);
+    } catch (TSS2_RC rc) {
+        m_started = false;
+        /* 将错误码转换为字符串内容, 之后再向上层抛出异常 */
         throw GetErrMsgOfTPMResponseCode(rc);
     }
+    m_savedSequenceHandle = cmd.getHashSequenceHandle();
     m_started = true;
 }
 
