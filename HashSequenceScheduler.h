@@ -30,4 +30,50 @@ private:
     TPMI_DH_OBJECT m_savedSequenceHandle;
 };
 
+class HashSequenceStartCommand {
+private:
+    TPM2B_AUTH auth;
+    TPMI_ALG_HASH hashAlg;
+    TPMI_DH_OBJECT sequenceHandle;
+    TPM_RC rc;
+
+public:
+    /**
+     * 构造函数
+     */
+    HashSequenceStartCommand();
+
+    /**
+     * 析构函数
+     */
+    ~HashSequenceStartCommand();
+
+    /**
+     *
+     */
+    TPMI_ALG_HASH prepareHashAlgorithm(TPMI_ALG_HASH algorithm);
+
+    /**
+     *
+     */
+    const TPM2B_AUTH& prepareOptionalAuthValue(const BYTE value[], UINT16 size);
+
+    /**
+     *
+     */
+    void clearAuthValue();
+
+    /**
+     * 执行 TPM 命令
+     */
+    virtual void execute(TSS2_SYS_CONTEXT *pSysContext);
+
+    /**
+     * 取出最终哈希摘要计算结果数据缓冲区的长度, 单位字节
+     *
+     * @return 长度
+     */
+    TPMI_DH_OBJECT getHashSequenceHandle() const;
+};
+
 #endif /* HASH_SEQUENCE_SCHEDULER_H_ */

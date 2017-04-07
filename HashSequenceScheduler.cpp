@@ -9,79 +9,6 @@ using namespace std;
 #define TPM_HT_NONE ((TPM_HT) 0xFC)
 #define HR_NONE ((TPM_HC) (TPM_HT_NONE << HR_SHIFT))
 
-class HashSequenceStartCommand {
-private:
-    TPM2B_AUTH auth;
-    TPMI_ALG_HASH hashAlg;
-    TPMI_DH_OBJECT sequenceHandle;
-    TPM_RC rc;
-
-public:
-    /**
-     * 构造函数
-     */
-    HashSequenceStartCommand() {
-        auth.t.size = 0;
-        auth.t.buffer[0] = '\0'; // Used for debugging
-        hashAlg = TPM_ALG_NULL;
-        sequenceHandle = (TPM_HT_NONE << HR_SHIFT);
-        rc = TPM_RC_SUCCESS;
-    }
-
-    /**
-     * 析构函数
-     */
-    ~HashSequenceStartCommand()
-    {
-        clearAuthValue();
-    }
-
-public:
-    TPMI_ALG_HASH prepareHashAlgorithm(TPMI_ALG_HASH algorithm) {
-        hashAlg = algorithm;
-        return hashAlg;
-    }
-
-    const TPM2B_AUTH& prepareOptionalAuthValue(const BYTE value[], UINT16 size) {
-        if (size > sizeof(auth.t.buffer)) {
-            /* 自动截断并舍弃超过长度上限的数据 */
-            size = sizeof(auth.t.buffer);
-        }
-        auth.b.size = size;
-        memcpy(auth.b.buffer, value, size);
-        return auth;
-    }
-
-    void clearAuthValue() {
-        const size_t len = sizeof(auth);
-        memset(&auth, 0x00, len); // 清空残留数据
-    }
-
-    virtual void execute(TSS2_SYS_CONTEXT *pSysContext) {
-        rc = Tss2_Sys_HashSequenceStart(
-                pSysContext, //
-                (TSS2_SYS_CMD_AUTHS *) NULL, //
-                &auth, // IN
-                hashAlg, // IN
-                &sequenceHandle, // OUT
-                (TSS2_SYS_RSP_AUTHS *) NULL); //
-        if (rc) {
-            throw (TSS2_RC) rc;
-            // fprintf(stderr, "Error: rc=0x%X\n", rc);
-        }
-        return;
-    }
-
-    /**
-     * 取出最终哈希摘要计算结果数据缓冲区的长度, 单位字节
-     *
-     * @return 长度
-     */
-    TPMI_DH_OBJECT getHashSequenceHandle() const {
-        return sequenceHandle;
-    }
-};
-
 void HashSequenceScheduler::start(TPMI_ALG_HASH algorithm,
         TPM2B_AUTH *pAuthValue)
 {
@@ -505,4 +432,66 @@ HashSequenceScheduler::HashSequenceScheduler(TSS2_SYS_CONTEXT *pSysContext)
     this->m_pSysContext = pSysContext;
     this->m_started = false;
     this->m_savedSequenceHandle = 0x0;  // 方便调试
+}
+
+/**
+ * 构造函数
+ */
+HashSequenceStartCommand::HashSequenceStartCommand() {
+    auth.t.size = 0;
+    auth.t.buffer[0] = '\0'; // Used for debugging
+    hashAlg = TPM_ALG_NULL;
+    sequenceHandle = (TPM_HT_NONE << HR_SHIFT);
+    rc = TPM_RC_SUCCESS;
+}
+
+/**
+ * 析构函数
+ */
+HashSequenceStartCommand::~HashSequenceStartCommand() {
+    clearAuthValue();
+}
+
+TPMI_ALG_HASH HashSequenceStartCommand::prepareHashAlgorithm(TPMI_ALG_HASH algorithm) {
+    hashAlg = algorithm;
+    return hashAlg;
+}
+
+const TPM2B_AUTH& HashSequenceStartCommand::prepareOptionalAuthValue(const BYTE value[], UINT16 size) {
+    if (size > sizeof(auth.t.buffer)) {
+        /* 自动截断并舍弃超过长度上限的数据 */
+        size = sizeof(auth.t.buffer);
+    }
+    auth.b.size = size;
+    memcpy(auth.b.buffer, value, size);
+    return auth;
+}
+
+void HashSequenceStartCommand::clearAuthValue() {
+    const size_t len = sizeof(auth);
+    memset(&auth, 0x00, len); // 清空残留数据
+}
+
+void HashSequenceStartCommand::execute(TSS2_SYS_CONTEXT *pSysContext) {
+    rc = Tss2_Sys_HashSequenceStart(
+            pSysContext, //
+            (TSS2_SYS_CMD_AUTHS *) NULL, //
+            &auth, // IN
+            hashAlg, // IN
+            &sequenceHandle, // OUT
+            (TSS2_SYS_RSP_AUTHS *) NULL); //
+    if (rc) {
+        throw (TSS2_RC) rc;
+        // fprintf(stderr, "Error: rc=0x%X\n", rc);
+    }
+    return;
+}
+
+/**
+ * 取出最终哈希摘要计算结果数据缓冲区的长度, 单位字节
+ *
+ * @return 长度
+ */
+TPMI_DH_OBJECT HashSequenceStartCommand::getHashSequenceHandle() const {
+    return sequenceHandle;
 }
