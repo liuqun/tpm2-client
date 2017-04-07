@@ -277,6 +277,36 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         return;
     }
     printf("New key successfully created in NULL hierarchy (RSA 2048).  Handle: 0x%8.8x\n", handle2048rsa);
+    int printfNameOfHandle = 1;
+    TPM_HANDLE objectHandle = handle2048rsa;
+    if (printfNameOfHandle)
+    {
+        TPM2B_PUBLIC keyInfo; // Fetch the public infomation of the key we created
+        TPM2B_NAME name;
+        TPM2B_NAME qualifiedName;
+        keyInfo.t.size = 0;
+        name.t.size = sizeof(TPM2B_NAME) - sizeof(UINT16);
+        qualifiedName.t.size = sizeof(TPM2B_NAME) - sizeof(UINT16);
+
+        rc = Tss2_Sys_ReadPublic(sysContext, objectHandle, NULL, &keyInfo, &name, &qualifiedName, NULL);
+        if (rc)
+        {
+            fprintf(stderr, "ERROR: Tss2_Sys_ReadPublic() returns a response code rc=0x%X\n", rc);
+            if (TSS2_SYS_RC_BAD_VALUE == rc)
+            {
+                fprintf(stderr, "ERROR: TSS2_SYS_RC_BAD_VALUE=0x%X\n", TSS2_SYS_RC_BAD_VALUE);
+            }
+            return;
+        }
+        printf("Key handle=0x%8.8x\n", objectHandle);
+        printf("name.t.size=0x%d\n", name.t.size);
+        printf("Key name data: ");
+        for (size_t i=0; i<name.t.size; i++)
+        {
+            printf("0x%02X,", name.t.name[i]);
+        }
+        printf("\n");
+    }
 }
 
 /* 调试专用函数 */
