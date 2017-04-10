@@ -29,6 +29,9 @@ COMPILE_cpp = $(COMPILE.cpp)
 main: main.o tcti_util.o ResponseCodeResolver.o NVSpaceMaster.o
 	$(CXX) $(LD_FLAGS) -o $@ $^ $(LIBS)
 
+HashSequenceScheduler_test: HashSequenceScheduler_test.o tcti_util.o ResponseCodeResolver.o HashSequenceScheduler.o
+	$(CXX) $(LD_FLAGS) -o $@ $^ $(LIBS)
+
 %.o: %.c %.h
 	$(COMPILE_c) -o $@ $<
 
