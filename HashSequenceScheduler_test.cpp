@@ -265,7 +265,6 @@ static void RunDefaultTestCase(TSS2_SYS_CONTEXT *pSysContext)
     resultDigest.t.size = 0;  // 清除内存中的无效数据
     TPM2B_MAX_BUFFER package;
     size_t n;
-    size_t offset;
     const uint8_t *p;
 
     try
@@ -275,18 +274,19 @@ static void RunDefaultTestCase(TSS2_SYS_CONTEXT *pSysContext)
 
         p = memoryToHash;
         n = sizeof(memoryToHash);
-        offset = 0;
-        while (n > MAX_DIGEST_BUFFER)
+        while (n > MAX_DIGEST_BUFFER)  // 待处理的字节数 n 超过缓冲区最大容量时, 分多轮处理
         {
             package.t.size = MAX_DIGEST_BUFFER;
-            memcpy(package.t.buffer, p + offset, MAX_DIGEST_BUFFER);
+            memcpy(package.t.buffer, p, MAX_DIGEST_BUFFER);
             scheduler.update(&package);
-            n -= MAX_DIGEST_BUFFER;
-            offset += MAX_DIGEST_BUFFER;
+            n -= MAX_DIGEST_BUFFER;  // 待处理的字节数 n 每轮递减若干字节
+            p += MAX_DIGEST_BUFFER;  // 指针偏移量每轮向后递增若干字节
         }
-        memcpy(package.t.buffer, p + offset, n);
+        // 最后一轮处理
+        memcpy(package.t.buffer, p, n);
         package.t.size = n;
         scheduler.update(&package);
+        // 取回哈希摘要结果
         memset(&resultDigest, 0x00, sizeof(TPM2B_DIGEST));
         resultDigest.t.size = sizeof(TPM2B_DIGEST) - 2;
         scheduler.complete(&resultDigest);
