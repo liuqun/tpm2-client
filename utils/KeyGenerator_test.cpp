@@ -157,7 +157,126 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
 
 static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
 {
+    TSS2_SYS_CONTEXT *sysContext = pSysContext;
 
+    const TPMI_RH_HIERARCHY hierarchy = TPM_RH_NULL;
+    if (TPM_RH_NULL == hierarchy)
+    {
+        printf("We will create a new key in TPM NULL-hierarchy.\n");
+    }
+
+    //printf("命令帧报文的 Authorization Area 字段, sessionHandle=TPM_RS_PW=%08H\n", TPM_RS_PW);
+    TPMS_AUTH_COMMAND sessionData;
+    sessionData.sessionHandle = TPM_RS_PW;
+    sessionData.nonce.t.size = 0;
+    sessionData.hmac.t.size = 0;
+    memset(&(sessionData.sessionAttributes), 0x00, sizeof(TPMA_SESSION));
+    TPMS_AUTH_COMMAND *cmdAuths[1];
+    cmdAuths[0] = &sessionData;
+    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+    cmdAuthsArray.cmdAuths = cmdAuths;
+    cmdAuthsArray.cmdAuthsCount = 1;
+
+    //printf("设置密钥初始条件(含有密码等敏感数据): \n");
+    TPM2B_SENSITIVE_CREATE inSensitive;
+    inSensitive.t.size = 0;
+    inSensitive.t.sensitive.userAuth.t.size = strlen("abcd");
+    inSensitive.t.sensitive.userAuth.t.buffer[0] = 'a';
+    inSensitive.t.sensitive.userAuth.t.buffer[1] = 'b';
+    inSensitive.t.sensitive.userAuth.t.buffer[2] = 'c';
+    inSensitive.t.sensitive.userAuth.t.buffer[3] = 'd';
+    if (inSensitive.t.sensitive.userAuth.t.size > 0)
+    {
+        inSensitive.t.size += sizeof(UINT16) + inSensitive.t.sensitive.userAuth.t.size;
+    }
+    inSensitive.t.sensitive.data.t.size = 0;
+    if (inSensitive.t.sensitive.data.t.size > 0)
+    {
+        inSensitive.t.size += sizeof(UINT16) + inSensitive.t.sensitive.data.t.size;
+    }
+
+    //printf("选择密钥类型和算法: \n");
+    TPM2B_PUBLIC inPublic;
+    inPublic.t.publicArea.type = TPM_ALG_RSA;
+    if (TPM_ALG_RSA == inPublic.t.publicArea.type)
+    {
+        printf("Key type: RSA.\n");
+    }
+    inPublic.t.publicArea.nameAlg = TPM_ALG_SHA1;
+    memset(&(inPublic.t.publicArea.objectAttributes), 0x00, sizeof(UINT32));
+    inPublic.t.publicArea.objectAttributes.restricted = 1;
+    inPublic.t.publicArea.objectAttributes.userWithAuth = 1;
+    inPublic.t.publicArea.objectAttributes.decrypt = 1;
+    inPublic.t.publicArea.objectAttributes.fixedTPM = 1;
+    inPublic.t.publicArea.objectAttributes.fixedParent = 1;
+    inPublic.t.publicArea.objectAttributes.sensitiveDataOrigin = 1;
+    inPublic.t.publicArea.authPolicy.t.size = 0;
+    inPublic.t.publicArea.parameters.rsaDetail.symmetric.algorithm = TPM_ALG_AES;
+    inPublic.t.publicArea.parameters.rsaDetail.symmetric.keyBits.aes = 128;
+    inPublic.t.publicArea.parameters.rsaDetail.symmetric.mode.aes = TPM_ALG_ECB;
+    inPublic.t.publicArea.parameters.rsaDetail.scheme.scheme = TPM_ALG_NULL;
+    inPublic.t.publicArea.parameters.rsaDetail.keyBits = 2048;
+    printf("Key size: %d bits.\n", inPublic.t.publicArea.parameters.rsaDetail.keyBits);
+    inPublic.t.publicArea.parameters.rsaDetail.exponent = 0;
+    inPublic.t.publicArea.unique.rsa.t.size = 0;
+
+    //printf("其他输入参数\n");
+    TPM2B_DATA outsizeInfo;
+    outsizeInfo.t.size = 0;
+    TPML_PCR_SELECTION creationPCR;
+    creationPCR.count = 0;
+
+    //printf("分别为各个输出参数预分配空间其他输入参数\n");
+    TPM_HANDLE handle2048rsa;
+    TPM2B_PUBLIC outPublic;
+    outPublic.t.size = 0;
+    TPM2B_CREATION_DATA creationData;
+    creationData.t.size = 0;
+    TPM2B_DIGEST creationHash;
+    creationHash.t.size = sizeof(creationHash) - sizeof(UINT16);
+    TPM2B_NAME keyName;
+    keyName.t.size = sizeof(keyName) - sizeof(UINT16);
+    TPMT_TK_CREATION creationTicket;
+    creationTicket.tag = 0;
+    creationTicket.hierarchy = 0x0;
+    creationTicket.digest.t.size = sizeof(creationTicket.digest.t.buffer);
+
+    //printf("应答帧报文的 Authorization Area\n");
+    TPMS_AUTH_RESPONSE sessionDataOut;
+    TPMS_AUTH_RESPONSE *rspAuths[1];
+    TSS2_SYS_RSP_AUTHS rspAuthsArray;
+    rspAuths[0] = &sessionDataOut;
+    rspAuthsArray.rspAuths = rspAuths;
+    rspAuthsArray.rspAuthsCount = 1;
+
+    /* 发送 TPM 命令 */
+    TPM_RC rc = Tss2_Sys_CreatePrimary(sysContext,
+            hierarchy, //
+            &cmdAuthsArray, //
+            &inSensitive, //
+            &inPublic, //
+            &outsizeInfo, //
+            &creationPCR, //
+            // 以上为输入参数
+            // 以下为输出参数
+            &handle2048rsa, //
+            &outPublic, //
+            &creationData, //
+            &creationHash, //
+            &creationTicket, //
+            &keyName, //
+            &rspAuthsArray //
+            );
+    if (rc) {
+        fprintf(stderr, "ERROR: rc=0x%X\n", rc);
+        if (TSS2_SYS_RC_BAD_VALUE == rc)
+        {
+            fprintf(stderr, "ERROR: TSS2_SYS_RC_BAD_VALUE=0x%X\n", TSS2_SYS_RC_BAD_VALUE);
+        }
+        //fprintf(stderr, "%s\n", GetErrMsgOfTPMResponseCode(rc));
+        return;
+    }
+    printf("New key successfully created in NULL hierarchy (RSA 2048).  Handle: 0x%8.8x\n", handle2048rsa);
 }
 
 /* 调试专用函数 */
