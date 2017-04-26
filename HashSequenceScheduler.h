@@ -76,4 +76,54 @@ public:
     TPMI_DH_OBJECT getHashSequenceHandle() const;
 };
 
+class HashSequenceUpdateCommand {
+private:
+    TPMI_DH_OBJECT sequenceHandle;
+    TPM2B_MAX_BUFFER data; // 用于存储本轮哈希操作待处理的原始数据
+    TPM_RC rc;
+    TPMS_AUTH_COMMAND sessionData;
+
+public:
+    /**
+     * 构造函数
+     */
+    HashSequenceUpdateCommand();
+
+    /**
+     * 析构函数
+     */
+    virtual ~HashSequenceUpdateCommand();
+
+    /**
+     * 指定哈希序列句柄及句柄本身的访问授权 AuthValue
+     */
+    void setSequenceHandle(TPMI_DH_OBJECT sequenceHandle);
+    void setSequenceHandleWithOptionalAuthValue(
+            TPMI_DH_OBJECT sequenceHandle, // 句柄
+            BYTE authValue[], // 句柄授权数据
+            UINT16 size // 数据长度
+            );
+    void clearAuthValue();
+
+    /**
+     * 存入本次进行哈希计算的数据
+     *
+     * @param data 待哈希的数据
+     * @param size 如果数据长度超过 MAX_DIGEST_BUFFER=1024 字节, 这里将自动截断多余的字节
+     * @return TPM2B 格式的数据块, 仅为调试使用, 可直接忽略该返回值
+     */
+    const TPM2B_MAX_BUFFER& prepareData(const BYTE data[], UINT16 size);
+
+    /**
+     * 清除数据
+     */
+    void clearData();
+
+    /**
+     * 执行 TPM 命令
+     */
+    virtual void execute(TSS2_SYS_CONTEXT *pSysContext);
+
+};
+
 #endif /* HASH_SEQUENCE_SCHEDULER_H_ */
