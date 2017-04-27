@@ -26,7 +26,7 @@ CXXFLAGS := $(CFLAGS)
 COMPILE_c = $(COMPILE.c)
 COMPILE_cpp = $(COMPILE.cpp)
 
-KeyGenerator_test: KeyGenerator_test.o
+KeyGenerator_test: KeyGenerator_test.o KeyUtilities.o
 	$(CXX) $(LD_FLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c %.h
