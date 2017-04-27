@@ -342,6 +342,7 @@ static void CreateChildNode(TSS2_SYS_CONTEXT *pSysContext, TPM_HANDLE parent, co
 
     //printf("设置密钥的敏感数据, 其中包含随意设置的子节点的密码, 仅用于后续功能测试\n");
     TPM2B_SENSITIVE_CREATE  inSensitive;
+    inSensitive.t.size = 0;
     inSensitive.t.sensitive.userAuth.t.size = strlen("child");
     inSensitive.t.sensitive.userAuth.t.buffer[0] = 'c';
     inSensitive.t.sensitive.userAuth.t.buffer[1] = 'h';
