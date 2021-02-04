@@ -1,0 +1,25 @@
+.deps/
+.dirstamp
+*.log
+*.trs
+aclocal.m4
+aminclude_static.am
+autom4te.cache/
+compile
+config.guess
+config.log
+config.status
+config.sub
+configure
+depcomp
+install-sh
+m4/
+libtool
+ltmain.sh
+missing
+Makefile
+Makefile.in
+test-driver
+# dist tarball
+*.gz
+src_vars.mk

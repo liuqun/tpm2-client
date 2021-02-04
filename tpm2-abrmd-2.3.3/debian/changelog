@@ -1,0 +1,119 @@
+tpm2-abrmd (2.3.3-1build1) hirsute; urgency=medium
+
+  * Rebuild with the new libtpm version
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Tue, 24 Nov 2020 23:20:27 +0100
+
+tpm2-abrmd (2.3.3-1) unstable; urgency=medium
+
+  * Import new upstream release
+  * d/rules:
+    - Remove unnecessary option of "--as-needed" since the bullseye toolchain
+      enabled in the default.
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Thu, 27 Aug 2020 14:54:48 +0800
+
+tpm2-abrmd (2.3.2-1) unstable; urgency=medium
+
+  * Import new upstream release
+  * Add autopkgtest
+  * Enable autopkgtest function in salsa
+  * d/control:
+    - Bump debhelper-compat to 13
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Tue, 26 May 2020 14:27:51 +0800
+
+tpm2-abrmd (2.3.1-1) unstable; urgency=medium
+
+  * Import new upstream release
+  * d/control:
+    - Bump Standards-Version to 4.5.0
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Mon, 27 Jan 2020 18:02:35 +0800
+
+tpm2-abrmd (2.3.0-1) unstable; urgency=medium
+
+  * Import new upstream release
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Fri, 22 Nov 2019 14:16:25 +0800
+
+tpm2-abrmd (2.2.0-1) unstable; urgency=medium
+
+  * Import new upstream release
+  * d/control:
+    - Use debhelper-compat (= 12) in build-dependency to replace d/compat
+    - Bump Standards-Version to 4.4.1
+    - Add Rules-Requires-Root: binary-targets
+    - Add Pre-Depends column
+    - Add sysvinit file for tpm2-abrmd
+  * d/rules:
+    - Correct the installation path of systemd service files (Closes: #931123)
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Sat, 12 Oct 2019 18:04:13 +0800
+
+tpm2-abrmd (2.1.1-1) unstable; urgency=medium
+
+  * Import new upstream release
+  * d/watch:
+    - Remove dh_make-template
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Tue, 02 Apr 2019 19:35:47 +0800
+
+tpm2-abrmd (2.1.0-1) unstable; urgency=medium
+
+  * Import new upstream release (Closes: #902127)
+  * d/compat:
+    - Bump compat version to 12
+  * d/control:
+    - Bump debhelper version to 12
+    - Bump Standards-Version to 4.3.0
+  * d/libtss2-tcti-tabrmd0.symbols:
+    - Add build depends package field
+  * Update d/patches:
+    - Resolve conflict issue with new upstream release
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Mon, 11 Feb 2019 15:05:43 +0800
+
+tpm2-abrmd (2.0.3-1) unstable; urgency=medium
+
+  * Import new upstream release
+  * Update symbol table
+  * Add upstream metadata
+  * Rename binary package from libtcti-tabrmd* to libtss2-tcti-tabrmd*
+  * Remove Fix-gdbus-codegen-lookup-for-recent-versions-of-GLib.patch since it
+    was merged in upstream
+  * Add Fix-macro-warning-error-by-adding-escaped-symbol.patch
+  * d/control:
+    - Bump Standards-Version to 4.2.1
+    - Add libtss2-dev in Build-Depends (Closes: #913367)
+    - Remove libsapi-dev from Build-Depends
+  * d/rules:
+    - Remove extra file to avoid failure under non-clean build
+  * d/tpm2-abrmd.install:
+    - Drop unneeded file
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Tue, 13 Nov 2018 16:27:07 +0800
+
+tpm2-abrmd (1.3.1-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * d/p/0002-Fix-gdbus-codegen-lookup-for-recent-versions-of-GLib.patch:
+    Apply patch from upstream to make the build system compatible with
+    recent GLib versions. In older GLib versions,
+    `$PKG_CONFIG --variable=gdbus_codegen gio-2.0` always returned
+    "gdbus-codegen", but in newer versions or when GLib was built with
+    Meson it returns the absolute path to gdbus-codegen, which is not a
+    valid input to AC_PATH_PROG. (Closes: #910340)
+  * d/rules: Use dbus-run-session to give unit tests a temporary
+    session bus. This means that tss2-tcti-tabrmd_unit does not have to
+    be skipped. (Closes: #910341)
+    - d/p/0002-remove-unit-test-needs-dbus-daemon.patch:
+      Remove, no longer needed
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 10 Oct 2018 08:46:43 +0100
+
+tpm2-abrmd (1.3.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #885774)
+
+ -- SZ Lin (林上智) <szlin@debian.org>  Tue, 01 May 2018 15:15:34 +0800

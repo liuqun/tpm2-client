@@ -1,0 +1,3 @@
+libtss2-rc.so.0 libtss2-rc0 #MINVER#
+ Tss2_RC_Decode@Base 3.0.1
+ Tss2_RC_SetHandler@Base 3.0.1

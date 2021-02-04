@@ -1,0 +1,30 @@
+Source: tpm2-tools
+Section: utils
+Priority: optional
+Maintainer: Ying-Chun Liu (PaulLiu) <paulliu@debian.org>
+Uploaders: Mathieu Trudel-Lapierre <cyphermox@ubuntu.com>,
+           Ivan Hu <ivan.hu@ubuntu.com>
+Build-Depends: autoconf,
+               autoconf-archive,
+               debhelper (>= 11),
+               docbook-xsl,
+               libcurl4-gnutls-dev | libcurl-ssl-dev,
+               libssl-dev,
+               libtool,
+               libtss2-dev (>= 2.3.0),
+               pandoc,
+               pkg-config,
+               uuid-dev,
+               xsltproc
+Homepage: https://github.com/tpm2-software/tpm2-tools
+Standards-Version: 4.4.1
+Vcs-Browser: https://salsa.debian.org/debian/tpm2-tools
+Vcs-Git: https://salsa.debian.org/debian/tpm2-tools.git
+
+Package: tpm2-tools
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: TPM 2.0 utilities
+ This package contains a set of tools to use with TPM 2.0 chips,
+ for common tasks and features provided by the hardware; such as
+ for doing basic key management, attestation, encryption and signing.

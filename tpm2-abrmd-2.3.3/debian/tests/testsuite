@@ -1,0 +1,4 @@
+#!/bin/sh
+
+dpkg-buildpackage -rfakeroot -us -uc -b
+make check-TESTS

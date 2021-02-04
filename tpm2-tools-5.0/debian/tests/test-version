@@ -1,0 +1,17 @@
+#!/bin/sh
+
+RESULT1=`tpm2_load -v`
+
+# Test if there is version
+echo "$RESULT1" | egrep -q -e 'version=["][^"]+["]'
+
+# Test version string
+VERSION_STRING=`tpm2_load -v | sed 's/.*version=["]\([^"]*\)["].*/\1/'`
+PACKAGE_VERSION=`dpkg -s tpm2-tools | grep Version: | sed -e 's/Version: //' | sed -e 's/-[^-]\+$//'`
+
+echo "VERSION_STRING =" "$VERSION_STRING"
+echo "PACKAGE_VERSION =" "$PACKAGE_VERSION"
+
+if [ "$VERSION_STRING" != "$PACKAGE_VERSION" ]; then
+    exit 1
+fi

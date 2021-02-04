@@ -1,0 +1,142 @@
+tpm2-tools (5.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * Update Homepage to new location (Closes: #971801)
+  * Add debian/NEWS (Closes: #964024)
+  * Remove Build-Depends python3-yaml (Closes: #972647)
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Mon, 30 Nov 2020 15:56:37 +0800
+
+tpm2-tools (4.3.0-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Wed, 09 Sep 2020 17:22:40 +0800
+
+tpm2-tools (4.2.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Tue, 26 May 2020 21:34:42 +0800
+
+tpm2-tools (4.2-3) unstable; urgency=low
+
+  * Change myself as maintainer. (Closes: #956933)
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Sun, 17 May 2020 11:37:22 +0800
+
+tpm2-tools (4.2-2) unstable; urgency=low
+
+  * Build-Depends add uuid-dev. Fix FTBFS.
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Fri, 17 Apr 2020 10:56:24 +0800
+
+tpm2-tools (4.2-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Thu, 16 Apr 2020 21:43:29 +0800
+
+tpm2-tools (4.1.1-1) unstable; urgency=low
+
+  [ Ying-Chun Liu (PaulLiu) <paulliu@debian.org> ]
+  * New upstream release
+    - Change Build-Depends on python-yaml -> python3-yaml (Closes: #943289)
+  * Remove 0002_add_tpm2-shutdown_manpage.patch: already upstreamed.
+  * Use salsa for collab-maint.
+  * Bump Standards-Version to 4.4.1: nothing needs to be changed.
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Sun, 02 Feb 2020 01:35:00 +0800
+
+tpm2-tools (4.1-1) unstable; urgency=low
+
+  * New upstream release
+    - debian/rules: call bootstrap to generate src_vars.mk
+    - due to above reason we need to add more files in debian/clean
+  * Update debian/patches/0001_add_version_string.patch
+    - to remove binNMU maintainer version.
+  * Update debian/tests/test-version to really test the version
+  * Update debian/watch to avoid looking for release-candidate version
+  * Add 0002_add_tpm2-shutdown_manpage.patch: Add manpage fom tpm2_shutdown
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Sat, 07 Dec 2019 20:57:03 +0800
+
+tpm2-tools (4.0.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Wed, 13 Nov 2019 03:42:01 +0800
+
+tpm2-tools (3.1.3-2) unstable; urgency=low
+
+  * Add debian/patches/0001_add_version_string.patch: (Closes: #913503)
+    - Add version string to configure.ac by query debian/changelog
+    - Add autopkgtest to test this bug: debian/tests/test-version
+  * Bump debhelper version to 11.
+  * Bump Standards-Version to 4.2.1: nothing needs to be changed.
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Mon, 10 Dec 2018 12:16:37 +0800
+
+tpm2-tools (3.1.3-1) unstable; urgency=low
+
+  * New upstream release (Closes: #904384)
+  * debian/control: Remove broken Vcs-Git and Vcs-Browser
+  * Remove the following patches - already upstreamed 
+    - gcc7-Change-two-case-fallthrough-conditions-that-ups.patch
+    - openssl_1.0.1.patch
+  * Bump debhelper version to 10. Remove Build-Depends on dh-autoreconf.
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Wed, 17 Oct 2018 00:47:59 +0800
+
+tpm2-tools (2.1.0-1) unstable; urgency=low
+
+  [ Mathieu Trudel-Lapierre <cyphermox@ubuntu.com> ]
+  * New upstream release 2.1.0:
+    - Rewrite/reoganization of most of the codebase.
+    - Fixed CVE-2017-7524. (Closes: #866257)
+  * debian/copyright: use the HTTPS form for the Format field.
+  * debian/control: bump to Standards-Version 4.0.0
+  * debian/copyright: further update copyright file for changes in release,
+    and mix and match of BSD-2-clause and BSD-3-clause.
+  * debian/rules: add extra files to clean up for autoreconf.
+  * debian/patches/openssl_1.0.1.patch: Make sure this builds against OpenSSL
+    1.1.0.
+
+  [ Ying-Chun Liu (PaulLiu) <paulliu@debian.org> ]
+  * Cherrypick gcc7-Change-two-case-fallthrough-conditions-that-ups.patch:
+    - Fix FTBFS for gcc 7
+  * Use upstream's manpage.
+  * debian/control: fix Vcs-Git field
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Fri, 15 Sep 2017 00:00:32 +0800
+
+tpm2-tools (1.1-1) unstable; urgency=low
+
+  [ Ivan Hu ]
+  * New upstream release version 1.1
+
+  [ Ying-Chun Liu (PaulLiu) <paulliu@debian.org> ]
+  * Initial upload to Debian. (Closes: #815849)
+  * Add missing manpages
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Sat, 04 Feb 2017 13:22:38 +0800
+
+tpm2-tools (1.0.0+20160226.64b3334-1) unstable; urgency=medium
+
+  * Initial upload to Debian.
+
+ -- Mathieu Trudel-Lapierre <cyphermox@ubuntu.com>  Mon, 20 Jun 2016 11:32:05 -0400
+
+tpm2-tools (1.0.0+20160226.64b3334-0ubuntu2) xenial; urgency=medium
+
+  * debian/control: tpm2-tools Depends on libtss2-utils, so that the resource
+    manager from tpm2-tss (in libtss2-utils) is installed and available to
+    broker our transactions to the TPM chip. (LP: #1569057)
+
+ -- Mathieu Trudel-Lapierre <cyphermox@ubuntu.com>  Mon, 11 Apr 2016 21:30:00 -0400
+
+tpm2-tools (1.0.0+20160226.64b3334-0ubuntu1) xenial; urgency=medium
+
+  * Initial release. (LP: #1561834)
+
+ -- Mathieu Trudel-Lapierre <mathieu-tl@ubuntu.com>  Fri, 25 Mar 2016 00:01:37 -0400

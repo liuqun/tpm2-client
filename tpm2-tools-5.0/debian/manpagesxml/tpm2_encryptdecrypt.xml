@@ -1,0 +1,507 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+
+<!--
+
+`xsltproc -''-nonet \
+          -''-param man.charmap.use.subset "0" \
+          -''-param make.year.ranges "1" \
+          -''-param make.single.year.ranges "1" \
+          /usr/share/xml/docbook/stylesheet/docbook-xsl/manpages/docbook.xsl \
+          manpage.xml'
+
+A manual page <package>.<section> will be generated. You may view the
+manual page with: nroff -man <package>.<section> | less'. A typical entry
+in a Makefile or Makefile.am is:
+
+DB2MAN = /usr/share/sgml/docbook/stylesheet/xsl/docbook-xsl/manpages/docbook.xsl
+XP     = xsltproc -''-nonet -''-param man.charmap.use.subset "0"
+
+manpage.1: manpage.xml
+        $(XP) $(DB2MAN) $<
+
+The xsltproc binary is found in the xsltproc package. The XSL files are in
+docbook-xsl. A description of the parameters you can use can be found in the
+docbook-xsl-doc-* packages. Please remember that if you create the nroff
+version in one of the debian/rules file targets (such as build), you will need
+to include xsltproc and docbook-xsl in your Build-Depends control field.
+Alternatively use the xmlto command/package. That will also automatically
+pull in xsltproc and docbook-xsl.
+
+Notes for using docbook2x: docbook2x-man does not automatically create the
+AUTHOR(S) and COPYRIGHT sections. In this case, please add them manually as
+<refsect1> ... </refsect1>.
+
+To disable the automatic creation of the AUTHOR(S) and COPYRIGHT sections
+read /usr/share/doc/docbook-xsl/doc/manpages/authors.html. This file can be
+found in the docbook-xsl-doc-html package.
+
+Validation can be done using: `xmllint -''-noout -''-valid manpage.xml`
+
+General documentation about man-pages and man-page-formatting:
+man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
+
+-->
+
+  <!-- Fill in your name for FIRSTNAME and SURNAME. -->
+  <!ENTITY dhfirstname "Ying-Chun">
+  <!ENTITY dhsurname   "Liu">
+  <!-- dhusername could also be set to "&dhfirstname; &dhsurname;". -->
+  <!ENTITY dhusername  "Ying-Chun Liu (PaulLiu)">
+  <!ENTITY dhemail     "paulliu@debian.org">
+  <!-- SECTION should be 1-8, maybe w/ subsection other parameters are
+       allowed: see man(7), man(1) and
+       http://www.tldp.org/HOWTO/Man-Page/q2.html. -->
+  <!ENTITY dhsection   "8">
+  <!-- TITLE should be something like "User commands" or similar (see
+       http://www.tldp.org/HOWTO/Man-Page/q2.html). -->
+  <!ENTITY dhtitle     "tpm2_encryptdecrypt User Manual">
+  <!ENTITY dhucpackage "tpm2-tools">
+  <!ENTITY dhpackage   "tpm2_encryptdecrypt">
+]>
+
+<refentry>
+  <refentryinfo>
+    <title>&dhtitle;</title>
+    <productname>&dhpackage;</productname>
+    <authorgroup>
+      <author>
+       <firstname>&dhfirstname;</firstname>
+        <surname>&dhsurname;</surname>
+        <contrib>Wrote this manpage for the Debian system.</contrib>
+        <address>
+          <email>&dhemail;</email>
+        </address>
+      </author>
+    </authorgroup>
+    <copyright>
+      <year>2017</year>
+      <holder>&dhusername;</holder>
+    </copyright>
+    <legalnotice>
+      <para>This manual page was written for the Debian system
+        (and may be used by others).</para>
+      <para>Permission is granted to copy, distribute and/or modify this
+        document under the terms of the GNU General Public License,
+        Version 3 or (at your option) any later version published by
+        the Free Software Foundation.</para>
+      <para>On Debian systems, the complete text of the GNU General Public
+        License can be found in
+        <filename>/usr/share/common-licenses/GPL-3</filename>.</para>
+    </legalnotice>
+  </refentryinfo>
+  <refmeta>
+    <refentrytitle>&dhucpackage;</refentrytitle>
+    <manvolnum>&dhsection;</manvolnum>
+  </refmeta>
+  <refnamediv>
+    <refname>&dhpackage;</refname>
+    <refpurpose>program to perform encrypt or decrpyt</refpurpose>
+  </refnamediv>
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>&dhpackage;</command>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-k</option></arg>
+          <arg choice="plain"><option>--keyHandle</option></arg>
+        </group>
+        <replaceable class="option">hexHandle</replaceable>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-c</option></arg>
+          <arg choice="plain"><option>--keyContext</option></arg>
+        </group>
+        <replaceable class="option">filename</replaceable>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-P</option></arg>
+          <arg choice="plain"><option>--pwdk</option></arg>
+        </group>
+        <replaceable class="option">password</replaceable>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-D</option></arg>
+          <arg choice="plain"><option>--decrypt</option></arg>
+        </group>
+        <group choice="req">
+          <arg choice="plain">YES</arg>
+          <arg choice="plain">NO</arg>
+        </group>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-I</option></arg>
+          <arg choice="plain"><option>--infile</option></arg>
+        </group>
+        <replaceable class="option">filePath</replaceable>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-o</option></arg>
+          <arg choice="plain"><option>--outfile</option></arg>
+        </group>
+        <replaceable class="option">filePath</replaceable>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-X</option></arg>
+          <arg choice="plain"><option>--passwdInHex</option></arg>
+        </group>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-p</option></arg>
+          <arg choice="plain"><option>--port</option></arg>
+        </group>
+        <replaceable class="option">portNumber</replaceable>
+      </arg>
+      <arg choice="opt">
+        <group choice="req">
+          <arg choice="plain"><option>-d</option></arg>
+          <arg choice="plain"><option>--debugLevel</option></arg>
+        </group>
+        <group choice="req">
+          <arg choice="plain">0</arg>
+          <arg choice="plain">1</arg>
+          <arg choice="plain">2</arg>
+          <arg choice="plain">3</arg>
+        </group>
+      </arg>
+    </cmdsynopsis>
+    <cmdsynopsis>
+      <command>&dhpackage;</command>
+      <!-- Normally the help and version options make the programs stop
+           right after outputting the requested information. -->
+      <group choice="opt">
+        <arg choice="plain">
+          <group choice="req">
+            <arg choice="plain"><option>-h</option></arg>
+            <arg choice="plain"><option>--help</option></arg>
+          </group>
+        </arg>
+        <arg choice="plain">
+          <group choice="req">
+            <arg choice="plain"><option>-v</option></arg>
+            <arg choice="plain"><option>--version</option></arg>
+          </group>
+        </arg>
+      </group>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+  <refsect1 id="description">
+    <title>DESCRIPTION</title>
+    <para>This manual page documents briefly the
+      <command>&dhpackage;</command>
+      command.</para>
+    <para>This manual page was written for the Debian distribution
+      because the original program does not have a manual page.
+    </para>
+    <para><command>&dhpackage;</command> is a program that perform the encryption and decryption.</para>
+  </refsect1>
+  <refsect1 id="options">
+    <title>OPTIONS</title>
+    <para>The program follows the usual GNU command line syntax,
+      with long options starting with two dashes (`-').  A summary of
+      options is included below. 
+    </para>
+    <variablelist>
+      <!-- Use the variablelist.term.separator and the
+           variablelist.term.break.after parameters to
+           control the term elements. -->
+      <varlistentry>
+        <term><option>-k <replaceable>hexHandle</replaceable></option></term>
+        <term><option>--keyHandle=<replaceable>hexHandle</replaceable></option></term>
+        <listitem>
+          <para>
+	    the symmetric key used for the operation(encryption/decryption).
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-c <replaceable>filename</replaceable></option></term>
+        <term><option>--keyContext=<replaceable>filename</replaceable></option></term>
+        <listitem>
+          <para>
+	    filename of the key context used for the operation.
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-P <replaceable>password</replaceable></option></term>
+        <term><option>--pwdk=<replaceable>password</replaceable></option></term>
+        <listitem>
+          <para>
+	    the password of key, optional.
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+	  <option>-D</option>
+	  <group choice="req">
+            <arg choice="plain">YES</arg>
+            <arg choice="plain">NO</arg>
+	  </group>
+	</term>
+        <term>
+	  <option>--decrypt=</option>
+	  <group choice="req">
+	    <arg choice="plain">YES</arg>
+            <arg choice="plain">NO</arg>
+	  </group>
+	</term>
+        <listitem>
+          <para>
+	    <itemizedlist numeration="lowerroman">
+	      <title>the operation type, default NO, optional</title>
+	      <listitem><para>YES - the operation is decryption</para></listitem>
+	      <listitem><para>NO - the operation is encryption</para></listitem>
+	    </itemizedlist>
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-I <replaceable>filePath</replaceable></option></term>
+        <term><option>--inFile=<replaceable>filePath</replaceable></option></term>
+        <listitem>
+          <para>
+	    Input file path, containing the data to be operated.
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-o <replaceable>filePath</replaceable></option></term>
+        <term><option>--outFile=<replaceable>filePath</replaceable></option></term>
+        <listitem>
+          <para>
+	    Output file path, record the operated data.
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-X</option></term>
+        <term><option>--passwdInHex</option></term>
+        <listitem>
+          <para>passwords given by any options are hex format.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-p <replaceable>portNumber</replaceable></option></term>
+        <term><option>--port=<replaceable>portNumber</replaceable></option></term>
+        <listitem>
+          <para>
+	    The Port number, default is 2323, optional.
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+	  <option>-d</option>
+	  <group choice="req">
+            <arg choice="plain">0</arg>
+            <arg choice="plain">1</arg>
+            <arg choice="plain">2</arg>
+            <arg choice="plain">3</arg>
+	  </group>
+	</term>
+        <term>
+	  <option>--debugLevel=</option>
+	  <group choice="req">
+	    <arg choice="plain">0</arg>
+            <arg choice="plain">1</arg>
+            <arg choice="plain">2</arg>
+            <arg choice="plain">3</arg>
+	  </group>
+	</term>
+        <listitem>
+          <para>
+	    <itemizedlist numeration="lowerroman">
+	      <title>The level of debug message, default is 0, optional</title>
+	      <listitem><para>0 - (high level test results)</para></listitem>
+	      <listitem><para>1 - (test app send/receive byte streams)</para></listitem>
+	      <listitem><para>2 - (resource manager send/receive byte streams)</para></listitem>
+	      <listitem><para>3 - (resource manager tables)</para></listitem>
+	    </itemizedlist>
+	  </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-h</option></term>
+        <term><option>--help</option></term>
+        <listitem>
+          <para>Show summary of options.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>-v</option></term>
+        <term><option>--version</option></term>
+        <listitem>
+          <para>Show version of program.</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+  <refsect1 id="diagnostics">
+    <title>DIAGNOSTICS</title>
+    <para><command>&dhpackage;</command> provides some return codes, that can
+      be used in scripts:</para>
+    <segmentedlist>
+      <segtitle>Code</segtitle>
+      <segtitle>Diagnostic</segtitle>
+      <seglistitem>
+        <seg><errorcode>0</errorcode></seg>
+        <seg>Program exited successfully.</seg>
+      </seglistitem>
+      <seglistitem>
+        <seg><errorcode>non-zero</errorcode></seg>
+        <seg>Program exited with some error.</seg>
+      </seglistitem>
+    </segmentedlist>
+  </refsect1>
+  <refsect1 id="bugs">
+    <!-- Or use this section to tell about upstream BTS. -->
+    <title>BUGS</title>
+    <para>The upstreams <acronym>BTS</acronym> can be found
+      at <ulink url="https://github.com/01org/tpm2.0-tools/issues"/>.</para>
+  </refsect1>
+  <refsect1 id="see_also">
+    <title>SEE ALSO</title>
+    <!-- In alpabetical order. -->
+    <para>
+      <citerefentry>
+        <refentrytitle>tpm2_activatecredential</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_akparse</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_certify</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_create</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_createprimary</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_evictcontrol</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_getmanufec</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_getpubak</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_getpubek</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_getrandom</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_hash</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_hmac</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_listpcrs</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_listpersistent</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_load</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_loadexternal</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_makecredential</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_nvdefine</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_nvlist</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_nvread</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_nvreadlock</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_nvrelease</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_nvwrite</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_quote</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_rc_decode</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_readpublic</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_rsadecrypt</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_rsaencrypt</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_sign</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_takeownership</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_unseal</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+        <refentrytitle>tpm2_verifysignature</refentrytitle>
+        <manvolnum>8</manvolnum>
+      </citerefentry>
+    </para>
+  </refsect1>
+</refentry>
+

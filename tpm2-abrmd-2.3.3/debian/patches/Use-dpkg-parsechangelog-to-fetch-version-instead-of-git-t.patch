@@ -1,0 +1,22 @@
+From: =?utf-8?b?IlNaIExpbiAo5p6X5LiK5pm6KSI=?= <szlin@debian.org>
+Date: Mon, 11 Feb 2019 14:01:01 +0800
+Subject: Use dpkg-parsechangelog to fetch version instead of git tag (Thanks
+ to Ying-Chun Liu (PaulLiu) <paulliu@debian.org>)
+
+---
+ bootstrap | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bootstrap b/bootstrap
+index 58571c6..4f81f29 100755
+--- a/bootstrap
++++ b/bootstrap
+@@ -1,7 +1,7 @@
+ #!/bin/sh
+ # SPDX-License-Identifier: BSD-2-Clause
+ 
+-git describe --tags --always --dirty > VERSION
++dpkg-parsechangelog | grep Version: | sed -e 's/Version: //' | sed -e 's/-[^-]*$//' > VERSION
+ autoreconf --install --sym
+ 
+ if grep "Invalid policy. Valid policies: git-directory, minor-version." configure >/dev/null; then

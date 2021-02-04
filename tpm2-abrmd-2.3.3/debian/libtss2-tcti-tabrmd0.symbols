@@ -1,0 +1,4 @@
+libtss2-tcti-tabrmd.so.0 libtss2-tcti-tabrmd0 #MINVER#
+* Build-Depends-Package: libtss2-tcti-tabrmd-dev
+ Tss2_Tcti_Info@Base 2.0.3
+ Tss2_Tcti_Tabrmd_Init@Base 2.0.3

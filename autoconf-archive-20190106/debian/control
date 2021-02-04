@@ -1,0 +1,30 @@
+Source: autoconf-archive
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Bastien Roucariès <rouca@debian.org>
+Uploaders: Deng Xiyue <manphiz-guest@users.alioth.debian.org>
+Section: devel
+Priority: optional
+Build-Depends: debhelper-compat (= 12),
+               texinfo
+Standards-Version: 4.4.0
+Vcs-Browser: https://salsa.debian.org/debian/autoconf-archive
+Vcs-Git: https://salsa.debian.org/debian/autoconf-archive.git
+Homepage: https://www.gnu.org/software/autoconf-archive/
+
+Package: autoconf-archive
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Recommends: autoconf
+Enhances: autoconf
+Pre-Depends: dpkg (>= 1.17.5)
+Breaks: autoconf-gl-macros (<< 20130609-1~),
+        gnome-common (<< 3.14.0-2~)
+Replaces: autoconf-gl-macros (<< 20130609-1~),
+          gnome-common (<< 3.14.0-2~)
+Provides: autoconf-gl-macros
+Description: Autoconf Macro Archive
+ Autoconf Macro Archive aims to provide a central repository of
+ useful and tested Autoconf macros for software developers around the
+ world. This package contains the complete content of the Autoconf
+ Macro Archive as found at http://www.gnu.org/software/autoconf-archive/.

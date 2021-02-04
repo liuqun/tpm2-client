@@ -1,0 +1,10 @@
+Document: tpm2-tss
+Title: tpm2-tss Documentation
+Author: Intel Corporation
+Abstract: This manual describes TPM Software stack 2.0 TCG spec compliant
+ implementation.
+Section: System/Security
+
+Format: HTML
+Index: /usr/share/doc/libtss2-dev/html/index.html
+Files: /usr/share/doc/libtss2-dev/html/*.html

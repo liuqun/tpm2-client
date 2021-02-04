@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	make all html
+
+override_dh_auto_install:
+	make install install-html DESTDIR=$(CURDIR)/debian/tmp
+
+	# remove duplicated file
+	rm -f $(CURDIR)/debian/tmp/usr/share/autoconf-archive/README
+	rm -f $(CURDIR)/debian/tmp/usr/share/autoconf-archive/COPYING*
+	rm -f $(CURDIR)/debian/tmp/usr/share/autoconf-archive/AUTHORS
+	rm -f $(CURDIR)/debian/tmp/usr/share/autoconf-archive/
+	# generated automatically
+	rm -f $(CURDIR)/debian/tmp/usr/share/info/dir
+	# move to better naming
+	mv $(CURDIR)/debian/tmp/usr/share/doc/autoconf-archive/autoconf-archive.html $(CURDIR)/debian/tmp/usr/share/doc/autoconf-archive/html

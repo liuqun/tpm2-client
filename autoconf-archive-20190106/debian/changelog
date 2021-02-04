@@ -1,0 +1,436 @@
+autoconf-archive (20190106-2.1ubuntu1) focal; urgency=medium
+
+  * Add python3.9 and python3.8 to ax_python detection.
+
+ -- Dimitri John Ledkov <xnox@ubuntu.com>  Mon, 10 Feb 2020 19:09:35 +0000
+
+autoconf-archive (20190106-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * debian/patches/0001-ax_boost_python.m4-fix-missing-l-parameter-
+    resulting.patch: Upstream proposed fix for python boost wrong linking
+    Closes: #948078
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Fri, 03 Jan 2020 19:46:30 +0100
+
+autoconf-archive (20190106-2) unstable; urgency=medium
+
+  * Upload to unstable
+  * Remove old compatibility code from jessie
+  * Fix debian copyright
+  * Bump to debhelper = 12
+
+ -- Bastien Roucariès <rouca@debian.org>  Tue, 03 Sep 2019 20:44:43 +0200
+
+autoconf-archive (20190106-1) experimental; urgency=medium
+
+  * New upstream
+  * The macro AX_CODE_COVERAGE was modified to use
+    AX_ADD_AM_MACRO_STATIC, and thus unfortunately
+    usage was changed.
+
+ -- Bastien Roucariès <rouca@debian.org>  Sat, 30 Mar 2019 16:43:24 +0100
+
+autoconf-archive (20180313-1) unstable; urgency=medium
+
+  * New upstream version:
+    The macros AX_R_PACKAGE and AX_PROG_DATE have been added.
+    Many other macros have received updates.
+  * Bug fix: "Broken AX_LIB_POSTGRESQL macro in sid?", thanks to Andreas
+    Seltenreich (Closes: #897604). Import patch from master.
+
+ -- Bastien Roucariès <rouca@debian.org>  Fri, 04 Jan 2019 19:01:05 +0100
+
+autoconf-archive (20170928-2) unstable; urgency=medium
+
+  * Bug fix: "ax_lib_postgresql.m4 must be updated to work with the
+    Debian-specific version string", thanks to Adrian Bunk (Closes:
+    #892690).
+
+ -- Bastien Roucariès <rouca@debian.org>  Mon, 12 Mar 2018 21:41:18 +0100
+
+autoconf-archive (20170928-1) unstable; urgency=medium
+
+  * New upstream version:
+    + The macros AX_PROG_HELP2MAN, AX_RECURSIVE_EVAL,
+      AX_SUBDIRS_CONFIGURE,
+      AX_ELISP, and AX_PROG_EMACS have been added.
+  * Drop autoconf-gl-macros (Closes: #878202).
+  * Bug fix: "AC_BOOST_BASE is broken for cross compilation", thanks to
+    Helmut Grohne (Closes: #872256).
+
+ -- Bastien Roucariès <rouca@debian.org>  Fri, 09 Mar 2018 15:56:16 +0100
+
+autoconf-archive (20170321-1) unstable; urgency=low
+
+  * New upstream version:
+    + remove obsolete macros: ax_c_bigendian_cross.m4,
+      ax_gcc_libraries_dir.m4, ax_gcc_version.m4, m4/ax_have_opengl.m4.
+    + Bug fix: "AX_IS_RELEASE does not work", thanks to Jens Sauer
+      (Closes: #859937).
+  * Switch to compat 10.
+  * Import master patch for supporting python > 2.6 in
+    m4/ax_python.m4 (Closes: #862440)
+  * Bug fix: "AX_CHECK_GL does not save LDFALGS but restores it",
+    thanks to Jerome Benoit (Closes: #848363).
+  * Bump policy, no changes
+  * Add my new debian address rouca@debian.org
+
+ -- Bastien Roucariès <rouca@debian.org>  Wed, 26 Jul 2017 23:43:47 +0200
+
+autoconf-archive (20160916-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Bug fix: "please mark autoconf-archive Multi-Arch: foreign", thanks to
+    Helmut Grohne (Closes: #840079).
+  * Bug fix: "ax_cxx_compile_stdcxx_*.m4 are broken, cause failures
+    building other software", thanks to Matthew Gabeler-Lee (Closes:
+    #838615).
+  * Bug fix: "Does not set HAVE_CXX11=1 if mandatory", thanks to Michael
+    Welsh Duggan (Closes: #806776).
+
+ -- Bastien Roucariès <roucaries.bastien+debian@gmail.com>  Mon, 10 Oct 2016 22:34:37 +0200
+
+autoconf-archive (20160320-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #829292).
+  * Bug fix: "AX_CODE_COVERAGE: does not support lcov-1.12", thanks to
+    Roman Lebedev (Closes: #834645).
+  * Put my name is lower case.
+  * Bump Standards-Version in debian/control (no changes required).
+  * Fix lintian warnings.
+
+ -- Bastien Roucariès <roucaries.bastien+debian@gmail.com>  Mon, 05 Sep 2016 14:46:38 +0200
+
+autoconf-archive (20150925-1) unstable; urgency=medium
+
+  * New upstream version
+  * Acknowledge NMU.
+  * Bug fix: "AX_CHECK_GLU trashes the LIBS variable", thanks to James
+    Cowgill (Closes: #795479).
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Sun, 27 Dec 2015 23:23:21 +0100
+
+autoconf-archive (20150224-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Add Breaks and Replaces on gnome-common (<< 3.14.0-2~) due to
+    autoconf-archive and gnome-common both shipping the same .m4 files.
+    (Closes: #790937)
+
+ -- Iain Lane <iain@orangesquash.org.uk>  Fri, 10 Jul 2015 13:04:49 +0100
+
+autoconf-archive (20150224-2) unstable; urgency=medium
+
+  * Acknowledge NMU.
+  * Fix incorrect use of dpkg-maintscript-helper in maintainer scripts,
+    causing installation error (Closes: #790851).
+    Thanks to Sebastian Ramacher!
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Fri, 03 Jul 2015 15:09:20 +0200
+
+autoconf-archive (20150224-1) unstable; urgency=medium
+
+  * New upstream version (Closes: #787757):
+    - Bug fix: "Warnings in ax_have_opengl.m4", thanks to
+      Alexander Inyukhin (Closes: #750762).
+  * Update debian/copyright.
+  * Add "Enhances autoconf" to debian/control.
+  * Add debian/upstream/metadata.
+  * Add debian/upstream/signing-key.asc.
+  * Fix Lintian warnings.
+  * Bump Standards-Version in debian/control (no changes required).
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Sat, 27 Jun 2015 23:01:09 +0200
+
+autoconf-archive (20140228-1) unstable; urgency=medium
+
+  * New upstream version (Closes: #741574).
+  * Fix multiarch problem for boost macros (Closes: #737087).
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Sat, 15 Mar 2014 22:54:27 +0100
+
+autoconf-archive (20131101-1) unstable; urgency=low
+
+  * New upstream version:
+    - Really fix "typo in ax_with_curses", (Closes: #668881)
+  * Switch symlink to dir to dpkg-maintscript-helper.
+  * Bump standard version (no change).
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Thu, 16 Jan 2014 19:13:01 +0100
+
+autoconf-archive (20130609-2) unstable; urgency=low
+
+  * Add patch from upstream for easing aarch64 port.
+  * Move to unstable
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Wed, 18 Sep 2013 14:59:47 +0200
+
+autoconf-archive (20130609-1) experimental; urgency=low
+
+  * Switch to xz both for source and debian part.
+  * New upstream version
+    - Bug fix: "typo in ax_with_curses",
+      thanks to Jakub Wilk (Closes: #668881).
+    - Reintroduce AX_CHECK_GL, AX_CHECK_GLU, AX_CHECK_GLUT.
+    - Replace autoconf-gl-macros package
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Thu, 20 Jun 2013 20:33:01 +0200
+
+autoconf-archive (20130202-1) experimental; urgency=low
+
+  * New upstream version.
+  * Move from cdbs to dh packaging system.
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Thu, 14 Mar 2013 22:32:11 +0100
+
+autoconf-archive (20111221-2) unstable; urgency=low
+
+  * Bug fix: "unhandled symlink to directory conversion:
+    /usr/share/doc/PACKAGE", thanks to Andreas Beckmann (Closes: #700789).
+    Remove old symlink /usr/share/doc/autoconf-archive/html and old target
+    /usr/share/autoconf-archive/html using preinst and postinst scripts.
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Sun, 17 Feb 2013 20:56:01 +0100
+
+autoconf-archive (20111221-1) unstable; urgency=low
+
+  * New upstream version.
+  * Upstream removed AX_CHECK_GL, AX_CHECK_GLU, AX_CHECK_GLUT. The
+  author of these macros prefers to publish them on his own website at
+  <http://code.google.com/p/autoconf-gl-macros/>. (Unfortunatly means
+  Closes: 546447)
+  * Remove build-depend on quilt.
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Sun, 08 Jan 2012 20:21:18 +0100
+
+autoconf-archive (20110917-1) unstable; urgency=low
+
+  * Bug fix: "bad html -> autoconf-archive.html move", thanks to Adrian
+    Bunk (Closes: #643764).
+  * New upstream version
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Mon, 31 Oct 2011 17:49:42 +0100
+
+autoconf-archive (20110717-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Fri, 22 Jul 2011 13:41:09 +0200
+
+autoconf-archive (20110412-1) unstable; urgency=low
+
+  * New upstream version (Closes: 568413):
+    - Bug fix: "AX_BOOST macros contain bashisms", thanks to Olaf Meeuwissen
+      (Closes: #584180).
+    - Bug fix: "AX_CFLAGS_GCC_OPTION misuses AS_VAR_PUSHDEF variable",
+      thanks to jgmb65@rezozer.net; (Closes: #593838).
+    - switch upstream web site (Closes: 214089)
+    - Bug fix: "with dash as shell, ax_prefix_config_h has a wrong
+      behavior", thanks to Jean-Pierre Flori (Closes: #622369).
+    - Fix problem with ax_boost_unit_test_framework (LP: #391092)
+  * Qingning Huo <qhuo@mayhq.co.uk> has retired
+    (Closes: #572669).
+  * Add myself as maintainer with permission of Deng Xiyue
+  * Use DEP5 copyright file
+  * Use cdbs
+  * Bump standard-version
+
+ -- Bastien ROUCARIÈS <roucaries.bastien+debian@gmail.com>  Sun, 26 Jun 2011 21:37:32 +0200
+
+autoconf-archive (20090426-1) unstable; urgency=low
+
+  * New upstream release.
+  * Update Standard-Version to 3.8.1:
+    + List original Debianizer.
+    + Point to versioned license file.
+
+ -- Deng Xiyue <manphiz-guest@users.alioth.debian.org>  Tue, 12 May 2009 17:30:18 +0800
+
+autoconf-archive (20081107-1) unstable; urgency=low
+
+  * New upstream release.  (Closes: #507556)
+    + Updated ax_boost_python and ax_python.  (Closes: #435152)
+    + Correct -L in PYTHON_LDFLAGS in ac_python_devel.m4.  (Closes: #414556)
+  * Update build infrastructure:
+    + Use debhelper 7 features, build-depends on debhelper >= 7 and set
+      compat to 7.
+    + Use standard make rules to install macros into /usr/share/aclocal.
+      (Closes: #485905)
+    + Provide doc-base registration.  (Closes: #451640)
+  * Add Homepage: field.
+  * Update Standard-Version to 3.8.0.
+  * Add myself as uploader, with permission from current maintainer
+    Qingning Huo.
+
+ -- Deng Xiyue <manphiz-guest@users.alioth.debian.org>  Fri, 05 Dec 2008 14:08:07 +0800
+
+autoconf-archive (20070512-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Mon, 14 May 2007 22:23:35 +0100
+
+autoconf-archive (20070509-1) unstable; urgency=low
+
+  * New upstream release (closes: #402182).
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Wed, 09 May 2007 22:32:25 +0100
+
+autoconf-archive (20060312-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Mon,  3 Apr 2006 20:41:05 +0100
+
+autoconf-archive (20051230-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Sun,  8 Jan 2006 08:35:26 +0000
+
+autoconf-archive (20051220-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Wed, 28 Dec 2005 12:05:09 +0000
+
+autoconf-archive (20051014-1) unstable; urgency=low
+
+  * New upstream release.
+  * ax_boost_filesystem.m4: fix typo $ac_cv_boost_filesystem, should be
+    $ax_cv_boost_filesystem (closes: #319376).
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Mon, 21 Nov 2005 21:13:25 +0000
+
+autoconf-archive (20050927-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Sat,  1 Oct 2005 22:04:21 +0100
+
+autoconf-archive (20050920-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Wed, 21 Sep 2005 21:47:01 +0100
+
+autoconf-archive (20050906-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Tue,  6 Sep 2005 21:37:39 +0100
+
+autoconf-archive (20050902-1) unstable; urgency=low
+
+  * New upstream release.
+  * Fix FSF address in debian/copyright.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Sun,  4 Sep 2005 14:58:50 +0100
+
+autoconf-archive (20050812-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Mon, 15 Aug 2005 20:23:37 +0100
+
+autoconf-archive (20050801-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Sun,  7 Aug 2005 22:30:35 +0100
+
+autoconf-archive (20050617-2) unstable; urgency=low
+
+  * Add a lintian override file (description-synopsis-is-duplicated)
+  * Add a linda override file (ex-desc-contains-desc)
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Mon, 11 Jul 2005 22:24:55 +0100
+
+autoconf-archive (20050617-1) unstable; urgency=low
+
+  * New upstram release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Tue, 21 Jun 2005 22:33:18 +0100
+
+autoconf-archive (20050520-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Tue, 24 May 2005 21:46:28 +0100
+
+autoconf-archive (20050502-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Tue,  3 May 2005 22:15:55 +0100
+
+autoconf-archive (20050418-1) unstable; urgency=low
+
+  * New maintainer, closes: #279554.
+  * New upstream release.
+  - README: Changed pacakge name and Homepage.
+  - bnv_have_qt.m4: add "-DQT_THREAD_SUPPORT" when LIB is "qt-mt",
+    closes: #279584.
+  - new m4 macros added, from 217 to 345.
+  * Added debian/watch.
+
+ -- Qingning Huo <qhuo@mayhq.co.uk>  Wed, 27 Apr 2005 22:44:22 +0100
+
+autoconf-archive (20041123-1) unstable; urgency=low
+
+  * New upstream release.
+  * Orphaned this package, setting maintainer to QA Group.
+    Not renaming ITA #279554.
+
+ -- Martin A. Godisch <godisch@debian.org>  Sat, 01 Jan 2005 22:15:56 +0100
+
+autoconf-archive (20040616-1) unstable; urgency=low
+
+  * New upstream release.
+  * Fixed POSIX compliance of debian/rules, closes: #256088.
+
+ -- Martin A. Godisch <godisch@debian.org>  Sat, 26 Jun 2004 09:43:57 +0200
+
+autoconf-archive (20040221-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Martin A. Godisch <godisch@debian.org>  Sun, 22 Feb 2004 20:42:57 +0100
+
+autoconf-archive (20040218-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Martin A. Godisch <godisch@debian.org>  Thu, 19 Feb 2004 07:50:58 +0100
+
+autoconf-archive (20031117-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Martin A. Godisch <godisch@debian.org>  Mon, 17 Nov 2003 16:39:04 +0100
+
+autoconf-archive (20031105-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Martin A. Godisch <godisch@debian.org>  Wed, 05 Nov 2003 07:38:10 +0100
+
+autoconf-archive (20031029-1) unstable; urgency=low
+
+  * New upstream release, enhances AC_DEFINE_DIR, closes: #214090.
+  * Updated standards version.
+
+ -- Martin A. Godisch <godisch@debian.org>  Wed, 29 Oct 2003 08:05:42 +0100
+
+autoconf-archive (20030521-2) unstable; urgency=low
+
+  * Fixed links in htmldoc/index.html, removed README.
+
+ -- Martin A. Godisch <godisch@debian.org>  Fri, 05 Sep 2003 09:22:54 +0200
+
+autoconf-archive (20030521-1) unstable; urgency=low
+
+  * Initial release, closes: #203653.
+
+ -- Martin A. Godisch <godisch@debian.org>  Fri, 01 Aug 2003 06:07:45 +0200

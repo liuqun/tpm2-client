@@ -1,0 +1,18 @@
+Description: Add version string to configure.ac
+ The configure.ac uses git to get the version string. However the git command
+ cannot get the version string because this is not a git repo.
+ In Debian we should get the string from debian/changelog.
+Author: Ying-Chun Liu (PaulLiu) <paulliu@debian.org>
+Bug-Debian: https://bugs.debian.org/913503
+Last-Update: 2018-12-10
+Index: tpm2-tools-4.1/configure.ac
+===================================================================
+--- tpm2-tools-4.1.orig/configure.ac
++++ tpm2-tools-4.1/configure.ac
+@@ -1,5 +1,5 @@
+ AC_INIT([tpm2-tools],
+-    [m4_esyscmd_s([git describe --tags --always --dirty])])
++    [m4_esyscmd_s([dpkg-parsechangelog | grep Version: | sed -e 's/Version: //' | sed -e 's/-[^-]\+$//'])])
+ AC_CONFIG_MACRO_DIR([m4])
+ 
+ AX_IS_RELEASE([dash-version])

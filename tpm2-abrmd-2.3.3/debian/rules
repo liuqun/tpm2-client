@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND  = -Wall
+
+# Some variables:
+DEB_HOST_ARCH_OS  ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
+DEB_HOST_ARCH_CPU ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_CPU)
+
+%:
+	dh $@ --exclude=.la --with autoreconf
+
+override_dh_autoreconf:
+	dh_autoreconf ./bootstrap
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-unit --with-systemdsystemunitdir=/lib/systemd/system \
+	--with-systemdpresetdir=/lib/systemd/system-preset
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	dbus-run-session -- dh_auto_test
+endif
+
+override_dh_clean:
+	dh_clean
+	rm -f test/integration/libtest.la
+
+override_dh_missing:
+	dh_missing --fail-missing

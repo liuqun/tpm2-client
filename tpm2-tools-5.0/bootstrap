@@ -1,0 +1,48 @@
+#!/bin/sh
+# SPDX-License-Identifier: BSD-3-Clause
+
+set -e
+
+# generate list of source files for use in Makefile.am
+# if you add new source files, you must run ./bootstrap again
+src_listvar () {
+    basedir=$1
+    suffix=$2
+    var=$3
+
+    find "${basedir}" -name "${suffix}" | LC_ALL=C sort | tr '\n' ' ' | (printf "${var} = " && cat)
+    echo ""
+}
+
+# duplicate fapi tests with ecc
+duplicate () {
+    basedir=$1
+    suffix=$2
+
+    find "${basedir}" \( -iname "${suffix}" ! -iname "*ecc.sh" \) | while read fname; do
+      cp $fname ${fname%.sh}_ecc.sh
+      sed -i -e 's/CRYPTO_PROFILE="RSA"/CRYPTO_PROFILE="ECC"/g' ${fname%.sh}_ecc.sh
+    done
+}
+
+
+VARS_FILE=src_vars.mk
+AUTORECONF=${AUTORECONF:-autoreconf}
+
+echo "Generating file lists: ${VARS_FILE}"
+(
+  src_listvar "lib" "*.c" "LIB_C"
+  src_listvar "lib" "*.h" "LIB_H"
+  printf "LIB_SRC = \$(LIB_C) \$(LIB_H)\n"
+
+  src_listvar "test/integration/tests" "*.sh" "SYSTEM_TESTS"
+  printf "ALL_SYSTEM_TESTS = \$(SYSTEM_TESTS)\n"
+
+  duplicate "test/integration/fapi" "*.sh"
+
+  src_listvar "test/integration/fapi" "*.sh" "FAPI_TESTS"
+  printf "ALL_FAPI_TESTS = \$(FAPI_TESTS)\n"
+) > ${VARS_FILE}
+
+mkdir -p m4
+${AUTORECONF} --install --sym

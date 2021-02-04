@@ -1,0 +1,7 @@
+Bug-Database: https://savannah.gnu.org/patch/?group=autoconf-archive
+Bug-Submit: https://savannah.gnu.org/patch/?group=autoconf-archive
+Contact: autoconf-archive-maintainers@gnu.org
+Name: autoconf-archive
+Repository: git://git.sv.gnu.org:/srv/git/autoconf-archive.git
+Repository-Browse: https://savannah.gnu.org/git/?group=autoconf-archive
+Security-Contact: autoconf-archive-maintainers@gnu.org

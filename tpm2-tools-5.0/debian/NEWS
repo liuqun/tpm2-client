@@ -1,0 +1,6 @@
+tpm2-tools (4.2.1-1) unstable; urgency=low
+
+  The command parameters changes significantly when updating from 3.x to 4.x.
+  Please read the changelog locate at /usr/share/doc/tpm2-tools
+
+ -- Ying-Chun Liu (PaulLiu) <paulliu@debian.org>  Tue, 26 May 2020 21:34:42 +0800

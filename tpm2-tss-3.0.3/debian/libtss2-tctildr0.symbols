@@ -1,0 +1,6 @@
+libtss2-tctildr.so.0 libtss2-tctildr0 #MINVER#
+ Tss2_TctiLdr_Finalize@Base 3.0.1
+ Tss2_TctiLdr_FreeInfo@Base 3.0.1
+ Tss2_TctiLdr_GetInfo@Base 3.0.1
+ Tss2_TctiLdr_Initialize@Base 3.0.1
+ Tss2_TctiLdr_Initialize_Ex@Base 3.0.1

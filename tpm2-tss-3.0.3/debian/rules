@@ -1,0 +1,36 @@
+#!/usr/bin/make -f
+
+DB2MAN = /usr/share/sgml/docbook/stylesheet/xsl/docbook-xsl/manpages/docbook.xsl
+XP     = xsltproc -''-nonet -''-param man.charmap.use.subset "0"
+
+%:
+	dh $@ --with autoreconf
+
+override_dh_autoreconf:
+	export LIBDL_LDFLAGS="-ldl"
+	dh_autoreconf ./bootstrap
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-unit --enable-doxygen-doc
+
+override_dh_autoreconf_clean:
+	rm -f compile depcomp ltmain.sh config.sub missing config.guess \
+		install-sh m4/ltoptions.m4 m4/ltversion.m4 m4/libtool.m4 \
+		m4/ltsugar.m4 m4/lt\~obsolete.m4
+	dh_autoreconf_clean
+
+override_dh_auto_build: resourcemgr.1 tpmclient.1 tpmtest.1
+	dh_auto_build
+
+override_dh_install:
+	find debian/tmp \( -name '*.la' -o -name '*.a' \) -delete
+	dh_install --list-missing
+
+resourcemgr.1: debian/resourcemgr.xml
+	$(XP) $(DB2MAN) $<
+
+tpmclient.1: debian/tpmclient.xml
+	$(XP) $(DB2MAN) $<
+
+tpmtest.1: debian/tpmtest.xml
+	$(XP) $(DB2MAN) $<

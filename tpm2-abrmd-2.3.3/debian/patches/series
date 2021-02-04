@@ -1,0 +1,2 @@
+Fix-macro-warning-error-by-adding-escaped-symbol.patch
+Use-dpkg-parsechangelog-to-fetch-version-instead-of-git-t.patch

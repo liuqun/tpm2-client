@@ -1,0 +1,3 @@
+Tests: test-version
+Depends: grep, @
+Restrictions: allow-stderr

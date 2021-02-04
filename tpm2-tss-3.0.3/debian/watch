@@ -1,0 +1,3 @@
+version=4
+opts=filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/tpm2-tss-$1\.tar\.gz/ \
+  https://github.com/tpm2-software/tpm2-tss/tags .*/v?(\d[0-9.]*)\.tar\.gz
