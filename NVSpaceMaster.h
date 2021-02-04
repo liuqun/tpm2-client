@@ -5,7 +5,7 @@
 #define NVSPACEMASTER_H_
 #ifdef __cplusplus
 
-#include <sapi/tpm20.h>
+#include <tss2/tss2_sys.h>
 
 class NVSpaceMaster
 {
@@ -93,10 +93,10 @@ public:
      * 用法1: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
      * 用法2: printf("%s\n", NVSpaceMaster::GetErrMsgOfTPMResponseCode(rc));
      *
-     * @param TPM_RC rc
+     * @param TSS2_RC rc
      * @return const char* - 一个表示错误信息的字符串(只读)
      */
-    static const char* GetErrMsgOfTPMResponseCode(TPM_RC rc); // 注: 此处定义重载了函数名称GetErrMsgOfTPMResponseCode()
+    static const char* GetErrMsgOfTPMResponseCode(TSS2_RC rc); // 注: 此处定义重载了函数名称GetErrMsgOfTPMResponseCode()
 };
 
 /*

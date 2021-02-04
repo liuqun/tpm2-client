@@ -8,7 +8,8 @@
 #include <cstring>
 #include <cstdio>
 using namespace std;
-#include <sapi/tpm20.h>
+#include <tss2/tss2_sys.h>
+#include <tss2/tss2_tpm2_types.h>
 #include "ResponseCodeResolver.h"
 
 /**
@@ -16,7 +17,7 @@ using namespace std;
  *
  * 用法及函数参数列表参见头文件 ResponseCodeResolver.h
  */
-const char *GetErrMsgOfTPMResponseCode(TPM_RC rc)
+const char *GetErrMsgOfTPMResponseCode(TSS2_RC rc)
 {
     ResponseCodeResolver resolver(rc);
     return resolver.msg();
@@ -25,9 +26,9 @@ const char *GetErrMsgOfTPMResponseCode(TPM_RC rc)
 /**
  * 构造函数
  *
- * @param TPM_RC rc
+ * @param TSS2_RC rc
  */
-ResponseCodeResolver::ResponseCodeResolver(TPM_RC rc)
+ResponseCodeResolver::ResponseCodeResolver(TSS2_RC rc)
 {
     uint32_t val;
 
@@ -68,7 +69,7 @@ const char *ResponseCodeResolver::msg()
         const char *reason;
         const char *detail;
     } err;
-    TPM_RC rc;
+    TSS2_RC rc;
 
     rc = this->getResponseCode();
     if (!rc)
@@ -78,14 +79,14 @@ const char *ResponseCodeResolver::msg()
 
     err.reason = "Unknown Response Code";
     err.detail = "";
-    if (rc & RC_FMT1)
+    if (rc & TPM2_RC_FMT1)
     {
-        if ((rc & 0x0FF) == (TPM_RC_P | TPM_RC_SIZE))
+        if ((rc & 0x0FF) == (TPM2_RC_P | TPM2_RC_SIZE))
         {
             err.reason = "Parameter size error";
             err.detail = "Check your command parameters which might be too long or too short.";
         }
-        else if ((rc & TPM_RC_S) && ((rc & 0x0FF) == TPM_RC_AUTH_FAIL))
+        else if ((rc & TPM2_RC_S) && ((rc & 0x0FF) == TPM2_RC_AUTH_FAIL))
         {
             err.reason = "Authorization failure";
             err.detail = "If you have provided the correct authorization but still get" \
@@ -97,34 +98,34 @@ const char *ResponseCodeResolver::msg()
     }
     else if (rc & 0x0100)
     {
-        if (rc == TPM_RC_INITIALIZE)
+        if (rc == TPM2_RC_INITIALIZE)
         {
             err.reason = "TPM has not been initialized";
             err.detail =
                     "A TPM2_Startup command MUST be performed before doing anything else.";
         }
-        else if (rc == TPM_RC_NV_UNINITIALIZED)
+        else if (rc == TPM2_RC_NV_UNINITIALIZED)
         {
             err.reason = "NV space has been defined but not initialized yet";
             err.detail = "When trying to read NV index, you may get this error code"
                     " because you have never successfully written anything into it.";
         }
-        else if (rc == TPM_RC_NV_RANGE)
+        else if (rc == TPM2_RC_NV_RANGE)
         {
             err.reason = "NV range exceeded";
             err.detail = "The NV offset+size you specified is out of range";
         }
-        else if (rc == TPM_RC_AUTH_MISSING)
+        else if (rc == TPM2_RC_AUTH_MISSING)
         {
             err.reason = "Authorization area is missing";
             err.detail = "Authorization is needed by the TPM object that you are trying to access!";
         }
-        else if (rc == TPM_RC_NV_AUTHORIZATION)
+        else if (rc == TPM2_RC_NV_AUTHORIZATION)
         {
             err.reason = "Authorization rejected";
             err.detail = "";
         }
-        else if (rc == TPM_RC_LOCKOUT)
+        else if (rc == TPM2_RC_LOCKOUT)
         {
             err.reason = "TPM has fallen into DA lockout mode";
             err.detail = "In DA lockout mode, any authorization attempts on objects subject to the DA protection"
@@ -141,15 +142,15 @@ const char *ResponseCodeResolver::msg()
     return msg;
 }
 
-void ResponseCodeResolver::setResponseCode(TPM_RC rc)
+void ResponseCodeResolver::setResponseCode(TSS2_RC rc)
 {
     uint32_t val = static_cast<uint32_t>(rc);
     UnsignedInt32Box::operator=(val);
 }
 
-TPM_RC ResponseCodeResolver::getResponseCode()
+TSS2_RC ResponseCodeResolver::getResponseCode()
 {
-    return static_cast<TPM_RC>(this->UnsignedInt32Box::value());
+    return static_cast<TSS2_RC>(this->UnsignedInt32Box::value());
 }
 
 void UnsignedInt32Box::operator=(uint32_t& value)
@@ -170,7 +171,7 @@ const char *NVSpaceRelatedResponseCodeResolver::msg()
         const char *reason;
         const char *detail;
     } err;
-    TPM_RC rc;
+    TSS2_RC rc;
 
     rc = this->getResponseCode();
     if (!rc)
@@ -181,9 +182,9 @@ const char *NVSpaceRelatedResponseCodeResolver::msg()
     n = SIZE;
     err.reason = "Unknown Response Code";
     err.detail = "";
-    if (rc & RC_FMT1)
+    if (rc & TPM2_RC_FMT1)
     {
-        if ((rc & 0x0FF) == (TPM_RC_P | TPM_RC_SIZE))
+        if ((rc & 0x0FF) == (TPM2_RC_P | TPM2_RC_SIZE))
         {
             err.reason = "Parameter size error";
             err.detail = "Your password might be too long, please check the TPM's capability specifications";

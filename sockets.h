@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 
-#include <sapi/tpm20.h>
+#include <tss2/tss2_sys.h>
 
 #ifndef _WIN32
 #include <sys/socket.h>
@@ -27,6 +27,7 @@ int WSAGetLastError();
 
 #endif
 
+/*
 int
 InitSockets( const char *hostName,
              UINT16 port,
@@ -36,6 +37,7 @@ InitSockets( const char *hostName,
              TCTI_LOG_CALLBACK  logCallback,
              void *logData );
 void CloseSockets( SOCKET serverSock, SOCKET tpmSock );
+*/
 TSS2_RC recvBytes( SOCKET tpmSock, unsigned char *data, int len );
 TSS2_RC sendBytes( SOCKET tpmSock, const unsigned char *data, int len );
 

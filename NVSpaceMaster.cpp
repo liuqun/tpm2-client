@@ -2,6 +2,8 @@
 // All rights reserved.
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "NVSpaceMaster.h"
@@ -12,7 +14,7 @@ NVSpaceMaster::NVSpaceMaster()
     this->pSysContext = NULL;
 }
 
-const char* NVSpaceMaster::GetErrMsgOfTPMResponseCode(TPM_RC rval)
+const char* NVSpaceMaster::GetErrMsgOfTPMResponseCode(TPM2_RC rval)
 {
     const char *msg = "";
     ResponseCodeResolver *pResolver =
@@ -35,65 +37,60 @@ void NVSpaceMaster::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
     /* 设置如何定义 NV 空间的参数 */
     TPM2B_NV_PUBLIC publicInfo;
 
-    publicInfo.t.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
+    publicInfo.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
             + sizeof(TPMA_NV) + sizeof(UINT16) + sizeof(UINT16);
-    publicInfo.t.nvPublic.nvIndex = nvIndex;
-    publicInfo.t.nvPublic.nameAlg = TPM_ALG_SHA1;
-    memset(&(publicInfo.t.nvPublic.attributes), 0x00,
-            sizeof(publicInfo.t.nvPublic.attributes));
-    publicInfo.t.nvPublic.attributes.TPMA_NV_AUTHREAD = 1;  // 定义读NV数据时是否需要授权
-    publicInfo.t.nvPublic.attributes.TPMA_NV_AUTHWRITE = 1;  // 定义写NV数据时是否需要授权
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PLATFORMCREATE = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_ORDERLY = 1;
-    publicInfo.t.nvPublic.authPolicy.t.size = 0;
-    publicInfo.t.nvPublic.dataSize = dataSize;
+    publicInfo.nvPublic.nvIndex = nvIndex;
+    publicInfo.nvPublic.nameAlg = TPM2_ALG_SHA1;
+    publicInfo.nvPublic.attributes =
+            TPMA_NV_AUTHREAD  // 定义读NV数据时是否需要授权
+            |TPMA_NV_AUTHWRITE  // 定义写NV数据时是否需要授权
+            |TPMA_NV_PLATFORMCREATE
+            |TPMA_NV_ORDERLY;
+    publicInfo.nvPublic.authPolicy.size = 0;
+    publicInfo.nvPublic.dataSize = dataSize;
 
     /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
     TPMS_AUTH_COMMAND cmdAuth;
-    TPMS_AUTH_COMMAND *cmdAuths[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+    TSS2L_SYS_AUTH_COMMAND cmdAuthsArray;
 
-    cmdAuth.sessionHandle = TPM_RS_PW;
+    cmdAuth.sessionHandle = TPM2_RS_PW;
     memset(&(cmdAuth.sessionAttributes), 0x00, sizeof(cmdAuth.sessionAttributes));
-    cmdAuth.nonce.t.size = 0;
-    cmdAuth.hmac.t.size = 0;
-    cmdAuths[0] = &cmdAuth;
-    cmdAuthsArray.cmdAuthsCount = 1;
-    cmdAuthsArray.cmdAuths = cmdAuths;
+    cmdAuth.nonce.size = 0;
+    cmdAuth.hmac.size = 0;
+    cmdAuthsArray.count = 1;
+    cmdAuthsArray.auths[0] = cmdAuth;
 
     /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
     TPMS_AUTH_RESPONSE rspAuth;
-    TPMS_AUTH_RESPONSE *rspAuths[1];
-    TSS2_SYS_RSP_AUTHS rspAuthsArray;
+    TSS2L_SYS_AUTH_RESPONSE rspAuthsArray;
 
     memset(&rspAuth, 0x00, sizeof(rspAuth));
-    rspAuths[0] = &rspAuth;
-    rspAuthsArray.rspAuthsCount = 1;
-    rspAuthsArray.rspAuths = rspAuths;
+    rspAuthsArray.count = 1;
+    rspAuthsArray.auths[0] = rspAuth;
 
     /* 指定密码 */
     TPM2B_AUTH auth;  // auth.t.buffer[] 在这里用于保存 password 明文
 
-    auth.t.size = strlen(password);
-    if (auth.t.size > sizeof(auth.t.buffer))
+    auth.size = strlen(password);
+    if (auth.size > sizeof(auth.buffer))
     {
         throw "password too long!";
     }
-    memcpy(auth.t.buffer, password, auth.t.size);
+    memcpy(auth.buffer, password, auth.size);
 
     /* System API 函数调用 */
-    TPM_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM_RH_PLATFORM,
+    TPM2_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM2_RH_PLATFORM,
             &cmdAuthsArray, &auth, &publicInfo, &rspAuthsArray);
 
     /* 退出之前擦除内存中的密码副本 */
-    if (auth.t.size > 0)
+    if (auth.size > 0)
     {
         srand(time(NULL));
-        for (int i = 0; i < auth.t.size; i++)
+        for (int i = 0; i < auth.size; i++)
         {
-            auth.t.buffer[i] = (0xFF & rand());
+            auth.buffer[i] = (0xFF & rand());
         }
-        auth.t.size = 0;
+        auth.size = 0;
     }
 
     /* 抛出错误信息字符串 */
@@ -112,19 +109,17 @@ void NVSpaceMaster::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
 
     /* 创建以下结构体作为 Tss2_Sys_NV_UndefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
     TPMS_AUTH_COMMAND cmdAuth;
-    TPMS_AUTH_COMMAND *cmdAuths[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+    TSS2L_SYS_AUTH_COMMAND cmdAuthsArray;
 
-    cmdAuth.sessionHandle = TPM_RS_PW;
+    cmdAuth.sessionHandle = TPM2_RS_PW;
     memset(&(cmdAuth.sessionAttributes), 0x00, sizeof(cmdAuth.sessionAttributes));
-    cmdAuth.nonce.t.size = 0;
-    cmdAuth.hmac.t.size = 0;
-    cmdAuths[0] = &cmdAuth;
-    cmdAuthsArray.cmdAuths = cmdAuths;
-    cmdAuthsArray.cmdAuthsCount = 1;
+    cmdAuth.nonce.size = 0;
+    cmdAuth.hmac.size = 0;
+    cmdAuthsArray.auths[0] = cmdAuth;
+    cmdAuthsArray.count = 1;
 
     /* System API 函数调用 */
-    TPM_RC rval = Tss2_Sys_NV_UndefineSpace(pSysContext, TPM_RH_PLATFORM,
+    TPM2_RC rval = Tss2_Sys_NV_UndefineSpace(pSysContext, TPM2_RH_PLATFORM,
             nvIndex, &cmdAuthsArray, NULL);
     /* 检查返回值 */
     if (rval)
@@ -144,59 +139,54 @@ void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
     /* 设置如何定义 NV 空间的参数 */
     TPM2B_NV_PUBLIC publicInfo;
 
-    publicInfo.t.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
+    publicInfo.size = sizeof(TPMI_RH_NV_INDEX) + sizeof(TPMI_ALG_HASH)
             + sizeof(TPMA_NV) + sizeof(UINT16) + sizeof(UINT16);
-    publicInfo.t.nvPublic.nvIndex = nvIndex;
-    publicInfo.t.nvPublic.nameAlg = TPM_ALG_SHA1;
-    memset(&(publicInfo.t.nvPublic.attributes), 0x00,
-            sizeof(publicInfo.t.nvPublic.attributes));
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PPREAD = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PPWRITE = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_WRITE_STCLEAR = 1;
-    publicInfo.t.nvPublic.attributes.TPMA_NV_PLATFORMCREATE = 1;
-    publicInfo.t.nvPublic.authPolicy.t.size = 0;
-    publicInfo.t.nvPublic.dataSize = dataSize;
+    publicInfo.nvPublic.nvIndex = nvIndex;
+    publicInfo.nvPublic.nameAlg = TPM2_ALG_SHA1;
+    publicInfo.nvPublic.attributes =
+            TPMA_NV_PPREAD
+            |TPMA_NV_PPWRITE
+            |TPMA_NV_PLATFORMCREATE
+            |TPMA_NV_WRITE_STCLEAR;
+    publicInfo.nvPublic.authPolicy.size = 0;
+    publicInfo.nvPublic.dataSize = dataSize;
 
     /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
     TPMS_AUTH_COMMAND cmdAuth;
-    TPMS_AUTH_COMMAND *cmdAuths[1];
-    TSS2_SYS_CMD_AUTHS cmdAuthsArray;
+    TSS2L_SYS_AUTH_COMMAND cmdAuthsArray;
 
-    cmdAuth.sessionHandle = TPM_RS_PW;
-    cmdAuth.nonce.t.size = 0;
-    cmdAuth.hmac.t.size = 0;
+    cmdAuth.sessionHandle = TPM2_RS_PW;
+    cmdAuth.nonce.size = 0;
+    cmdAuth.hmac.size = 0;
     memset(&(cmdAuth.sessionAttributes), 0x00, sizeof(cmdAuth.sessionAttributes));
-    cmdAuths[0] = &cmdAuth;
-    cmdAuthsArray.cmdAuths = cmdAuths;
-    cmdAuthsArray.cmdAuthsCount = 1;
+    cmdAuthsArray.auths[0] = cmdAuth;
+    cmdAuthsArray.count = 1;
 
     /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
     TPMS_AUTH_RESPONSE rspAuth;
-    TPMS_AUTH_RESPONSE *rspAuths[1];
-    TSS2_SYS_RSP_AUTHS rspAuthsArray;
+    TSS2L_SYS_AUTH_RESPONSE rspAuthsArray;
 
     memset(&rspAuth, 0x00, sizeof(rspAuth));
-    rspAuths[0] = &rspAuth;
-    rspAuthsArray.rspAuths = rspAuths;
-    rspAuthsArray.rspAuthsCount = 1;
+    rspAuthsArray.auths[0] = rspAuth;
+    rspAuthsArray.count = 1;
 
     /* 指定密码 */
     TPM2B_AUTH auth;
-    auth.t.size = 0;  // 不需要密码
+    auth.size = 0;  // 不需要密码
 
     /* System API 函数调用 */
-    TPM_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM_RH_PLATFORM,
+    TPM2_RC rval = Tss2_Sys_NV_DefineSpace(pSysContext, TPM2_RH_PLATFORM,
             &cmdAuthsArray, &auth, &publicInfo, &rspAuthsArray);
 
     /* 退出之前擦除内存中的密码副本 */
-    if (auth.t.size > 0)
+    if (auth.size > 0)
     {
         srand(time(NULL));
-        for (int i = 0; i < auth.t.size; i++)
+        for (int i = 0; i < auth.size; i++)
         {
-            auth.t.buffer[i] = (0xFF & rand());
+            auth.buffer[i] = (0xFF & rand());
         }
-        auth.t.size = 0;
+        auth.size = 0;
     }
 
     /* 抛出异常 */

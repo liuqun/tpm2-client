@@ -1,0 +1,9 @@
+*.o
+main
+*.bak
+*.rar
+*.zip
+*.tar.gz
+*.tar.bz2
+~*
+*~

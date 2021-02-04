@@ -10,7 +10,7 @@
 #ifndef RESPONSECODERESOLVER_H_
 #define RESPONSECODERESOLVER_H_
 
-#include <sapi/tpm20.h>
+#include <tss2/tss2_sys.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -25,10 +25,10 @@ extern "C"
  *
  * 用法: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
  *
- * @param TPM_RC rc
+ * @param TSS2_RC rc
  * @return const char* - 一个表示错误信息的字符串(只读)
  */
-const char *GetErrMsgOfTPMResponseCode(TPM_RC rc);
+const char *GetErrMsgOfTPMResponseCode(TSS2_RC rc);
 
 #ifdef __cplusplus
 } /* C 接口函数声明 - 结束 */
@@ -54,7 +54,7 @@ public:
 /**
  * Response code resolver 辅助类
  *
- * 解析TPM_RC编码
+ * 解析TSS2_RC编码
  */
 class ResponseCodeResolver: UnsignedInt32Box
 {
@@ -62,9 +62,9 @@ public:
     /**
      * 构造函数
      *
-     * @param TPM_RC rc
+     * @param TSS2_RC rc
      */
-    ResponseCodeResolver(TPM_RC rc = TPM_RC_SUCCESS);
+    ResponseCodeResolver(TSS2_RC rc = TSS2_RC_SUCCESS);
 
     /**
      * 析构函数
@@ -74,17 +74,17 @@ public:
     /**
      * 成员函数: setResponseCode()
      *
-     * @param TPM_RC rc
+     * @param TSS2_RC rc
      */
-    void setResponseCode(TPM_RC rc);
+    void setResponseCode(TSS2_RC rc);
 
     /**
      * 成员函数: getResponseCode()
      *
-     * @return TPM_RC - 返回之前 setResponseCode() 函数存储的错误编码值
+     * @return TSS2_RC - 返回之前 setResponseCode() 函数存储的错误编码值
      * 如果之前没有存储过错误编码则返回TPM_RC_SUCCESS
      */
-    TPM_RC getResponseCode();
+    TSS2_RC getResponseCode();
 
     /**
      * 成员函数: msg()
@@ -100,7 +100,7 @@ public:
 /**
  * NV space related response code resolver 辅助类
  *
- * 解析与 NV 空间操作相关的 TPM_RC 返回值编码
+ * 解析与 NV 空间操作相关的 TSS2_RC 返回值编码
  */
 class NVSpaceRelatedResponseCodeResolver: ResponseCodeResolver
 {
