@@ -1,0 +1,14 @@
+deb http://mirrors.aliyun.com/ubuntu/ hirsute main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ hirsute main restricted universe multiverse
+
+deb http://mirrors.aliyun.com/ubuntu/ hirsute-updates main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ hirsute-updates main restricted universe multiverse
+
+deb http://mirrors.aliyun.com/ubuntu/ hirsute-backports main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ hirsute-backports main restricted universe multiverse
+
+# deb http://mirrors.aliyun.com/ubuntu hirsute partner
+# deb-src http://mirrors.aliyun.com/ubuntu hirsute partner
+
+deb http://mirrors.aliyun.com/ubuntu/ hirsute-security main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ hirsute-security main restricted universe multiverse
