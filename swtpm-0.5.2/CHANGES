@@ -1,0 +1,103 @@
+CHANGES - changes for swtpm
+
+version 0.5.2:
+  - swtpm:
+    - Fix potential buffer overflow related to largely unused data hashing
+      function in control channel
+    - swtpm: Unconditionally close fd if writing of pidfile fails (coverity)
+  - swtpm_setup:
+    - Increase timeout from 10s to 30s for slower machines
+  - Travis:
+    - Not building on OS X anymore due to additional costs
+
+version 0.5.1:
+  - swtpm & swtpm_setup:
+    - Addressed potential symlink attack issue (CVE-2020-28407)
+  - build-sys:
+    - Fix configure python cryptography error message
+
+version 0.5.0:
+  - swtpm:
+    - Write files atomically using a temp file and then renaming
+  - swtpm_setup:
+    - Removed remaining 'c' wrapper program
+    - Do not truncate logfile when testing write-access (regression)
+    - Remove TPM state file in case error occurred
+  - swtpm-localca:
+    - Rewrite in python
+    - Allow passing pkcs11 PIN using signingkey_password
+    - Allow passing environment variables needed for pkcs11 modules using
+      swtpm-localca.conf and format 'env:VARNAME=VALUE'.
+  - build-sys:
+    - Add python-install and python-uninstall targets
+    - Add configure option to disable installation of Python module
+    - Use -Wl,-z,relro and -Wl,-z,now only when linking (clang)
+    - Use AC_LINK_IFELSE to check whether support for hardening flags
+
+version 0.4.0:
+  - swtpm:
+    - Invoke print capabilities after choosing TPM version
+    - Add some recent syscalls to seccomp blacklist
+  - swtpm_cert:
+    - Support --ecc-curveid option to pass curve id
+  - swtpm_setup & related scripts:
+    - Rewrite swtpm_setup.sh in python with TPM 1.2 not requiring tcsd
+      and TPM tools anymore; new dependencies:
+      - python3: pip, cryptography, setuptools
+      dropped dependencies for swtpm_setup:
+      - tcsd, expect, tpm-tools (some still needed for pkcs11 tests)
+    - Added support for RSA 3072 keys (for libtpms-0.8.0) and moved to
+      ECC NIST P384 curve; default RSA key size is still 2048
+    - Added support for --rsa-keysize option
+    - Extend script to create a CA using a TPM 2 for signing
+  - tests:
+    - Use the IBM TSS2 v1.5.0's test suite
+    - Add test case for loading of an NVRAM completely full with keys
+    - Have softhsm_setup use temporary directory for softhsm config & state
+    - various other improvements
+  - man pages:
+    - Improvements
+  - build-sys:
+    - clang: properly test for linker flag 'now' and 'relro'
+    - Gentoo: explicitly link libswtpm_libtpms with -lcrypto
+    - Ownership of /var/lib/swtpm-localca is now tss:root and
+      mode flags 0750.
+
+version 0.3.0:
+  - swtpm:
+      - Support for applying 'TPM Startup' command during initialization
+      - Use writev_full rather than writev; fixes --vtpm-proxy EIO error
+      - Only accept() new client ctrl connection if we have none (bugfix)
+  - swtpm_setup & related scripts:
+      - Support whitespaces in filenames and paths
+      - Do not fail on future PCR banks' hashes
+  - swtpm_cert:
+      - Fix OIDs for TPM 2 platforms data
+      - Option parsing cleanup
+      - Support for passing password in various forms
+      - Use gnutls_x509_crt_get_subject_key_id API call for subj keyId
+      - Support 64bit serial numbers read from command line
+  - swtpm_ioctl:
+      - Block SIGPIPE so we can get EPIPE on write()
+  - swtpm_bios:
+      - Block SIGPIPE so we can get EPIPE on write()
+  - tests:
+      - Increased timeouts and better support for running tests with
+        executables run by valgrind
+      - Allow running tests with choice of seccomp profile option
+        (SWTPM_TEST_SECCOMP_OPT) to enable building for Ubuntu
+      - Various cleanups & fixes
+  - SELinux:
+      - More rules added for support on F30
+
+version 0.2.0:
+  - Linux: swtpm now runs with a seccomp profile (blacklist) if compiled with
+           libseccomp support
+  - Added subpport for passing key and passphrase via file descriptor
+  - TPM 2 commands can now be prefixed by 'the TCG header' and responses will
+    have a 4-byte prefix and 4-byte suffix.
+  - Added --print-capabilities command line option
+  - Proper handling on EINTR on read, poll, and write
+
+version 0.1.0:
+  first public release

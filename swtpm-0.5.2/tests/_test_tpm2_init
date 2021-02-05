@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# For the license, see the LICENSE file in the root directory.
+#set -x
+
+ROOT=${abs_top_builddir:-$(pwd)/..}
+TESTDIR=${abs_top_testdir:-$(dirname "$0")}
+
+VTPM_NAME="vtpm-test-tpm2-init"
+SWTPM_DEV_NAME="/dev/${VTPM_NAME}"
+export TPM_PATH=$(mktemp -d)
+STATE_FILE=$TPM_PATH/tpm2-00.permall
+VOLATILE_STATE_FILE=$TPM_PATH/tpm2-00.volatilestate
+SWTPM_INTERFACE=${SWTPM_INTERFACE:-cuse}
+SWTPM_CMD_UNIX_PATH=${TPM_PATH}/unix-cmd.sock
+SWTPM_CTRL_UNIX_PATH=${TPM_PATH}/unix-ctrl.sock
+
+function cleanup()
+{
+	pid=${SWTPM_PID}
+	if [ -n "$pid" ]; then
+		kill_quiet -9 $pid
+	fi
+	rm -rf $TPM_PATH
+}
+
+trap "cleanup" EXIT
+
+[ "${SWTPM_INTERFACE}" == "cuse" ] && source ${TESTDIR}/test_cuse
+source ${TESTDIR}/common
+
+rm -f $STATE_FILE $VOLATILE_STATE_FILE 2>/dev/null
+
+if has_seccomp_support "${SWTPM_EXE}"; then
+	SWTPM_TEST_SECCOMP_OPT="--seccomp action=none"
+fi
+
+run_swtpm ${SWTPM_INTERFACE} --tpm2
+
+display_processes_by_name "$SWTPM"
+
+kill_quiet -0 ${SWTPM_PID}
+if [ $? -ne 0 ]; then
+	echo "Error: ${SWTPM_INTERFACE} TPM did not start."
+	exit 1
+fi
+
+# Init the TPM
+run_swtpm_ioctl ${SWTPM_INTERFACE} -i
+if [ $? -ne 0 ]; then
+	echo "Error: Could not initialize the ${SWTPM_INTERFACE} TPM."
+	exit 1
+fi
+
+kill_quiet -0 ${SWTPM_PID} 2>/dev/null
+if [ $? -ne 0 ]; then
+	echo "Error: ${SWTPM_INTERFACE} TPM not running anymore after INIT."
+	exit 1
+fi
+
+# Init the TPM again but make its state file inaccessible; this only
+# works if the TPM runs as non-rootchmod 000 "${STATE_FILE}"
+if [ "$(id -u)" != "0" ]; then
+	chmod 000 "${STATE_FILE}"
+	run_swtpm_ioctl ${SWTPM_INTERFACE} -i
+	if [ $? -eq 0 ]; then
+		echo "Error: Unexpected initialization success of the ${SWTPM_INTERFACE} TPM."
+		exit 1
+	fi
+
+	sleep 0.5
+
+	kill_quiet -0 ${SWTPM_PID} 2>/dev/null
+	if [ $? -ne 0 ]; then
+		echo "Error: ${SWTPM_INTERFACE} TPM not running anymore after failed INIT."
+		exit 1
+	fi
+	chmod 664 "${STATE_FILE}"
+
+	# Init the TPM again; now with state file accessible again
+	run_swtpm_ioctl ${SWTPM_INTERFACE} -i
+	if [ $? -ne 0 ]; then
+		echo "Error: Could not initialize the ${SWTPM_INTERFACE} TPM."
+		exit 1
+	fi
+
+	sleep 0.5
+
+	kill_quiet -0 ${SWTPM_PID} 2>/dev/null
+	if [ $? -ne 0 ]; then
+		echo "Error: ${SWTPM_INTERFACE} TPM not running anymore after INIT."
+		exit 1
+	fi
+fi
+
+check_seccomp_profile "${SWTPM_EXE}" ${SWTPM_PID} 0
+if [ $? -ne 0 ]; then
+	exit 1
+fi
+
+# Shut down
+run_swtpm_ioctl ${SWTPM_INTERFACE} -s
+if [ $? -ne 0 ]; then
+	echo "Error: Could not shut down the ${SWTPM_INTERFACE} TPM."
+	exit 1
+fi
+
+if wait_process_gone ${SWTPM_PID} 4; then
+	echo "Error: ${SWTPM_INTERFACE} TPM should not be running anymore."
+	exit 1
+fi
+
+if [ ! -e $STATE_FILE ]; then
+	echo "Error: TPM state file $STATE_FILE does not exist."
+	exit 1
+fi
+
+echo "OK"
+
+exit 0

@@ -1,0 +1,336 @@
+#!/bin/bash
+
+# For the license, see the LICENSE file in the root directory.
+#set -x
+
+ROOT=${abs_top_builddir:-$(pwd)/..}
+TESTDIR=${abs_top_testdir:-$(dirname "$0")}
+
+VTPM_NAME="vtpm-test-tpm2-derived-keys"
+SWTPM_DEV_NAME="/dev/${VTPM_NAME}"
+SWTPM_INTERFACE=${SWTPM_INTERFACE:-cuse}
+
+tpmstatedir="$(mktemp -d)"
+if [ -z "$tpmstatedir" ]; then
+	echo "Could not create temporary directory"
+	exit 1
+fi
+
+SWTPM_CMD_UNIX_PATH=${tpmstatedir}/unix-cmd.sock
+SWTPM_CTRL_UNIX_PATH=${tpmstatedir}/unix-ctrl.sock
+
+function cleanup()
+{
+	pid=${SWTPM_PID}
+	if [ -n "$pid" ]; then
+		kill_quiet -9 $pid
+	fi
+	rm -rf $tpmstatedir
+}
+
+trap "cleanup" EXIT
+
+[ "${SWTPM_INTERFACE}" == "cuse" ] && source ${TESTDIR}/test_cuse
+source ${TESTDIR}/common
+
+export TPM_PATH=$tpmstatedir
+
+# copy all the state files
+cp ${TESTDIR}/data/tpm2state1/* ${TPM_PATH}
+
+run_swtpm ${SWTPM_INTERFACE} --tpm2
+
+kill_quiet -0 ${SWTPM_PID}
+if [ $? -ne 0 ]; then
+	echo "Error: ${SWTPM_INTERFACE} TPM did not start."
+	exit 1
+fi
+
+# Create a key
+# @param1: reset (!= 0) TPM before creating key;
+# @param2: whether to send TPM2_Startup
+# @param3: command to send
+# @param4: expected return value
+# @param5: allowed failure return value to skip test
+function tx_cmd()
+{
+	local reset="$1"
+	local startup="$2"
+	local cmd="$3"
+	local exp="$4"
+	local allowed_error="$5"
+
+	local RES tmp
+
+	if [ "$reset" != "0" ]; then
+		run_swtpm_ioctl ${SWTPM_INTERFACE} -i
+		if [ $? -ne 0 ]; then
+			echo "Error: Could not send TPM_INIT"
+			return 1
+		fi
+	fi
+	if [ "$startup" != "0" ]; then
+		swtpm_open_cmddev ${SWTPM_INTERFACE} 100
+		RES=$(swtpm_cmd_tx ${SWTPM_INTERFACE} '\x80\x01\x00\x00\x00\x0c\x00\x00\x01\x44\x00\x00')
+		tmp=' 80 01 00 00 00 0a 00 00 00 00'
+		if [ "$RES" != "$tmp" ]; then
+			echo "Error: Did not get expected response from TPM2_Startup"
+			echo "expected: $tmp"
+			echo "received: $RES"
+			return 1
+		fi
+		exec 100>&-
+	fi
+
+	swtpm_open_cmddev ${SWTPM_INTERFACE} 100
+	RES=$(swtpm_cmd_tx ${SWTPM_INTERFACE} ${cmd})
+	if [ "$RES" == "$allowed_error" ]; then
+		echo "Skip: Encountered allowed error response ($allowed_error)"
+	elif [ "$RES" != "$exp" ]; then
+		echo "Error: Did not get expected return from creating key"
+		echo "expected: $exp"
+		echo "received: $RES"
+		return 1
+	fi
+	exec 100>&-
+
+	return 0
+}
+
+# Older versions of libtpms do not support TDES
+# So we may skip the test in case we hit this error
+error_unsupt_algo=' 80 01 00 00 00 0a 00 00 02 d6'
+
+# Create a primary RSA key and expect a predictable return value
+# tsscreateprimary -hi e -v
+# -> creates key with handle 0x80 00 00 00
+test1_cmd='\x80\x02\x00\x00\x00\x43\x00\x00\x01\x31\x40\x00\x00\x0b\x00\x00'
+test1_cmd+='\x00\x09\x40\x00\x00\x09\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00'
+test1_cmd+='\x00\x00\x1a\x00\x01\x00\x0b\x00\x03\x04\x72\x00\x00\x00\x06\x00'
+test1_cmd+='\x80\x00\x43\x00\x10\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+test1_cmd+='\x00\x00\x00'
+
+test1_exp=' 80 02 00 00 01 fa 00 00 00 00 80 00 00 00 00 00'
+test1_exp+=' 01 e3 01 1a 00 01 00 0b 00 03 04 72 00 00 00 06 00'
+test1_exp+=' 80 00 43 00 10 08 00 00 00 00 00 01 00 b5 0a c8 18'
+test1_exp+=' 00 01 82 b6 53 63 fc a1 ba 4d 13 d2 1e 05 63 08 bb'
+test1_exp+=' df b3 95 c5 e0 d7 42 f8 c4 21 f1 c7 df ac ee 57 e4'
+test1_exp+=' 3d 80 7b da 33 95 76 56 cc 73 df 0b 33 db 4b 3a f0'
+test1_exp+=' d1 80 86 a2 35 df a9 a7 82 4b 6d 1e 88 d7 e8 d9 73'
+test1_exp+=' 0b 6c d3 c5 ef b9 5c fb 92 69 d8 c0 d8 e9 a1 fa a3'
+test1_exp+=' 72 dc 6a 3e 8c c4 a7 8e 9f b8 f2 0e b3 64 e0 8c cb'
+test1_exp+=' f0 02 31 d1 b6 ee 2c de e7 c7 92 7e 34 b8 46 80 7e'
+test1_exp+=' f6 0a f9 b6 57 e0 91 51 18 27 5b fe 8a e7 22 d2 41'
+test1_exp+=' e1 e6 16 d6 04 e0 03 a9 1c be 5d 6b 37 a7 d7 03 45'
+test1_exp+=' 7e dc 96 ad 5d ea bb 99 c5 e1 07 a9 70 6f b2 89 d9'
+test1_exp+=' 4b c1 cc 01 fa df 6d 74 de ca f9 41 bf be 89 bd 53'
+test1_exp+=' 79 ee 28 8e ef 81 16 c2 d1 6d cf 10 49 06 23 ba b3'
+test1_exp+=' ab d7 27 fc 7c f2 6a f4 8a 75 5b de ea dc e9 33 0a'
+test1_exp+=' e8 d5 70 2b 5a 94 03 f7 5e 75 5d 76 08 3b 6e c1 2c'
+test1_exp+=' 1f cb 28 68 ab 82 87 49 70 96 96 56 ac d7 00 37 00'
+test1_exp+=' 00 00 00 00 20 e3 b0 c4 42 98 fc 1c 14 9a fb f4 c8'
+test1_exp+=' 99 6f b9 24 27 ae 41 e4 64 9b 93 4c a4 95 99 1b 78'
+test1_exp+=' 52 b8 55 01 00 10 00 04 40 00 00 0b 00 04 40 00 00'
+test1_exp+=' 0b 00 00 00 20 28 d0 26 fa fd 74 91 06 74 3e 27 c4'
+test1_exp+=' 28 05 51 58 5e 5d 17 66 8e b5 21 83 5e d6 01 27 ef'
+test1_exp+=' fc 05 d4 80 21 40 00 00 0b 00 40 dc 19 bf 88 fc 7b'
+test1_exp+=' d8 5c 0b 40 fb 0f ec b0 af 6b f1 46 3e 26 bf bf 74'
+test1_exp+=' 95 ec 0e 6f 60 b3 e7 dd 29 55 11 3f 9f ee 9f 75 27'
+test1_exp+=' d8 b5 4a 51 72 6e dc a1 68 a6 0a 6d d3 70 1f 0c 00'
+test1_exp+=' df 79 60 23 86 83 e0 00 22 00 0b 45 fe 98 72 0a c6'
+test1_exp+=' cf 0a ca 16 37 28 d9 e2 33 a9 d5 4f 5d b5 d3 78 bf'
+test1_exp+=' 40 20 60 b3 85 8d 41 ff c7 00 00 01 00 00'
+
+# Create a primary ECC key and expect a predictable return value
+# tsscreateprimary -hi e -ecc bnp256 -v
+# -> creates key with handle 0x80 00 00 00
+test2_cmd='\x80\x02\x00\x00\x00\x43\x00\x00\x01\x31\x40\x00\x00\x0b\x00\x00'
+test2_cmd+='\x00\x09\x40\x00\x00\x09\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00'
+test2_cmd+='\x00\x00\x1a\x00\x23\x00\x0b\x00\x03\x04\x72\x00\x00\x00\x06\x00'
+test2_cmd+='\x80\x00\x43\x00\x10\x00\x03\x00\x10\x00\x00\x00\x00\x00\x00\x00'
+test2_cmd+='\x00\x00\x00'
+
+test2_exp=' 80 02 00 00 01 3a 00 00 00 00 80 00 00 00 00 00 01 23'
+test2_exp+=' 00 5a 00 23 00 0b 00 03 04 72 00 00 00 06 00 80 00 43'
+test2_exp+=' 00 10 00 03 00 10 00 20 15 86 c2 64 96 e4 b1 07 83 17 de 90'
+test2_exp+=' da 9e df 61 42 e2 12 6b 94 48 c9 d9 bc e6 31 03 8e 8b fb 1f'
+test2_exp+=' 00 20 37 26 ca 32 f2 6d 75 cb 1f 5d e8 8e b6 3e 96 8e 10 a0'
+test2_exp+=' 1c df 55 91 4a 9b 50 a1 2a e6 a1 ee 32 45 00 37 00 00 00 00'
+test2_exp+=' 00 20 e3 b0 c4 42 98 fc 1c 14 9a fb f4 c8 99 6f b9 24 27 ae'
+test2_exp+=' 41 e4 64 9b 93 4c a4 95 99 1b 78 52 b8 55 01 00 10 00 04 40'
+test2_exp+=' 00 00 0b 00 04 40 00 00 0b 00 00 00 20 28 d0 26 fa fd 74 91'
+test2_exp+=' 06 74 3e 27 c4 28 05 51 58 5e 5d 17 66 8e b5 21 83 5e d6 01'
+test2_exp+=' 27 ef fc 05 d4 80 21 40 00 00 0b 00 40 99 3f 24 8d 87 28 fe'
+test2_exp+=' bb 5d 1b be fc 12 2c cd 4e 5b 03 22 7a 78 00 3b 64 76 ec 08'
+test2_exp+=' 11 2f 4c 36 7b 36 f7 83 1a 59 74 19 fe 52 45 81 f7 08 bc be'
+test2_exp+=' b0 e1 99 37 1a 3e 7b ba cb dc 3e 20 d8 51 82 45 24 00 22 00'
+test2_exp+=' 0b ac 4c a0 86 53 fa 68 b2 c9 54 f5 7e f7 c2 54 12 0a 08 03'
+test2_exp+=' de 8e 96 e1 f1 89 97 52 a8 1a fb 0b cc 00 00 01 00 00'
+
+# Create an AES key and expect a predictable return value
+# tsscreateloaded -hp 40000001 -rsa -des -v
+# -> creates key with handle 0x80 00 00 00
+test3_cmd='\x80\x02\x00\x00\x00\x35\x00\x00\x01\x91\x40\x00\x00\x01\x00\x00'
+test3_cmd+='\x00\x09\x40\x00\x00\x09\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00'
+test3_cmd+='\x00\x00\x12\x00\x25\x00\x0b\x00\x06\x04\x60\x00\x00\x00\x06\x00'
+test3_cmd+='\x80\x00\x43\x00\x00'
+
+test3_exp=' 80 02 00 00 00 71 00 00 00 00 80 00 00 00 00 00 00'
+test3_exp+=' 5a 00 00 00 32 00 25 00 0b 00 06 04 60 00 00 00 06 00 80'
+test3_exp+=' 00 43 00 20 b4 1c 16 e3 78 1e dc 6c 8a 84 ce 27 f1 f3 8c'
+test3_exp+=' 8c 67 fe ea 6e 1f 14 2d db 26 2e 16 dd 5c fb f0 fb 00 22'
+test3_exp+=' 00 0b d4 2a 69 2b 4c b7 31 e2 65 d4 14 61 10 aa 16 ec b2'
+test3_exp+=' 7f a3 27 15 1b 5c 7c 22 98 90 1f cd f2 9e bc 00 00 01 00'
+test3_exp+=' 00'
+
+# Create a TDES (0x03) key and expect a predictable return value
+# (tsscreateloaded does not support TDES)
+# -> creates key with handle 0x80 00 00 00
+test4_cmd='\x80\x02\x00\x00\x00\x35\x00\x00\x01\x91\x40\x00\x00\x01\x00\x00'
+test4_cmd+='\x00\x09\x40\x00\x00\x09\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00'
+test4_cmd+='\x00\x00\x12\x00\x25\x00\x0b\x00\x06\x04\x60\x00\x00\x00\x03\x00'
+test4_cmd+='\x80\x00\x43\x00\x00'                                     #^^^^ <- TDES
+
+test4_exp=' 80 02 00 00 00 71 00 00 00 00 80 00 00 00 00 00 00'
+test4_exp+=' 5a 00 00 00 32 00 25 00 0b 00 06 04 60 00 00 00 03'
+test4_exp+=' 00 80 00 43 00 20 91 28 1c bc ac 9d d6 6d 29 33 82'
+test4_exp+=' 74 05 16 d4 ab 4c 6a 6c 95 cf 60 8e a8 69 43 1f e2'
+test4_exp+=' 37 13 67 eb 00 22 00 0b 9e 45 d0 46 1f 72 a7 eb 24'
+test4_exp+=' 67 cf 02 67 5a e1 ee bb ab 29 13 44 ba d1 e1 14 fd'
+test4_exp+=' 1f 73 33 db 5f 33 00 00 01 00 00'
+
+# Create a primary RSA key and expect a predictable return value
+# tsscreateprimary -hi e -dp -v
+# -> creates key with handle 0x80 00 00 00
+test5_cmd1='\x80\x02\x00\x00\x00\x3b\x00\x00\x01\x31\x40\x00\x00\x0b\x00\x00'
+test5_cmd1+='\x00\x09\x40\x00\x00\x09\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00'
+test5_cmd1+='\x00\x00\x12\x00\x08\x00\x0b\x00\x03\x04\x72\x00\x00\x00\x0a\x00'
+test5_cmd1+='\x0b\x00\x22\x00\x00\x00\x00\x00\x00\x00\x00'
+
+test5_exp1=' 80 02 00 00 01 12 00 00 00 00 80 00 00 00 00 00'
+test5_exp1+=' 00 fb 00 32 00 08 00 0b 00 03 04 72 00 00 00 0a'
+test5_exp1+=' 00 0b 00 22 00 20 5f bc a0 5c 6c b0 60 fe 76 c5'
+test5_exp1+=' 0f f2 0e eb e8 52 9f 2b e7 3b 06 6a b4 3f 88 6f'
+test5_exp1+=' 51 1f cd d8 c1 1f 00 37 00 00 00 00 00 20 e3 b0'
+test5_exp1+=' c4 42 98 fc 1c 14 9a fb f4 c8 99 6f b9 24 27 ae'
+test5_exp1+=' 41 e4 64 9b 93 4c a4 95 99 1b 78 52 b8 55 01 00'
+test5_exp1+=' 10 00 04 40 00 00 0b 00 04 40 00 00 0b 00 00 00'
+test5_exp1+=' 20 28 d0 26 fa fd 74 91 06 74 3e 27 c4 28 05 51'
+test5_exp1+=' 58 5e 5d 17 66 8e b5 21 83 5e d6 01 27 ef fc 05'
+test5_exp1+=' d4 80 21 40 00 00 0b 00 40 8e 6b 7d 82 b0 d4 6b'
+test5_exp1+=' 04 f3 9d a7 54 5d f3 5e 70 79 c3 7a 8c 5b 7a 08'
+test5_exp1+=' cb 03 62 24 47 1a e3 7d de 49 95 23 2b d7 69 6b'
+test5_exp1+=' 23 6b 2f b5 ed 35 ee 9d c4 01 3f 3b 37 db 2f ba'
+test5_exp1+=' a4 8f 80 68 f9 c1 d2 ff 70 00 22 00 0b 6a 1a f5'
+test5_exp1+=' 61 1c 58 6a 02 3f 3f 12 15 86 67 57 7e da fb 30'
+test5_exp1+=' 0a 6b 66 b4 68 99 77 46 f8 4c ea ef 8b 00 00 01'
+test5_exp1+=' 00 00'
+
+# Create a derived key with this primary key as parent:
+# createloaded -hp 80000000 -der -ecc bnp256 -den -kt f -kt p -v
+# -> creates key with handle 0x80 00 00 01
+test5_cmd2='\x80\x02\x00\x00\x00\x39\x00\x00\x01\x91\x80\x00\x00\x00\x00\x00'
+test5_cmd2+='\x00\x09\x40\x00\x00\x09\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00'
+test5_cmd2+='\x00\x00\x16\x00\x23\x00\x0b\x00\x02\x04\x52\x00\x00\x00\x10\x00'
+test5_cmd2+='\x10\x00\x10\x00\x10\x00\x00\x00\x00'
+
+test5_exp2+=' 80 02 00 00 00 95 00 00 00 00 80 00 00 01 00 00'
+test5_exp2+=' 00 7e 00 00 00 56 00 23 00 0b 00 02 04 52 00 00'
+test5_exp2+=' 00 10 00 10 00 10 00 10 00 20 af 79 72 26 52 4e'
+test5_exp2+=' 14 e7 99 c2 a4 49 60 2a 19 8e 78 0c 30 c5 6f 65'
+test5_exp2+=' f1 e6 26 3a 67 ee 5a df 3c 31 00 20 cd b5 62 59'
+test5_exp2+=' 83 2e ad 91 1c 81 83 3e 92 22 8e 9d d0 71 bf 65'
+test5_exp2+=' 5c bc 38 24 6a a7 07 e6 0d eb 9d d3 00 22 00 0b'
+test5_exp2+=' be 61 98 28 b4 ea 33 db b0 24 39 2d 9f b4 0b 71'
+test5_exp2+=' ab ff ed 4b 55 02 f0 4e 3e 66 41 91 73 96 25 b6'
+test5_exp2+=' 00 00 01 00 00'
+
+#
+# The issue is that 32bit TPMs produce different results than
+# 64bit TPMs. We only test 64bit TPMs with the above expected
+# return values. We also only test little endian
+#
+case "$(uname -s)" in
+Linux)
+	# Only 64bit apps will link with libs in /lib64/ dirs
+	if [ -n "$(grep -E "\/lib64\/" /proc/${SWTPM_PID}/maps)" ] && \
+	   [ -n "$(lscpu | grep "Little Endian")" ]; then
+		tx_cmd 1 0 "$test1_cmd" "$test1_exp" "" || exit 1 && echo "Test 1: OK"
+		tx_cmd 1 1 "$test2_cmd" "$test2_exp" "" || exit 1 && echo "Test 2: OK"
+		tx_cmd 1 1 "$test3_cmd" "$test3_exp" "" || exit 1 && echo "Test 3: OK"
+		tx_cmd 1 1 "$test4_cmd" "$test4_exp" "$error_unsupt_algo" || exit 1 && echo "Test 4: OK"
+		tx_cmd 1 1 "$test5_cmd1" "$test5_exp1" "" || exit 1
+		tx_cmd 0 0 "$test5_cmd2" "$test5_exp2" "" || exit 1 && echo "Test 5: OK"
+	else
+		echo "This test currently only runs with 64bit little endian swtpm. ${SWTPM_EXE} seems 32bit or big endian."
+	fi
+	;;
+*)
+	echo "This test currently only runs on Linux"
+	;;
+esac
+
+# Get revision of TPM 2.0 implementation; we need >= 155 for subsequent tests
+revision=$(run_swtpm_ioctl ${SWTPM_INTERFACE} --info 1 |
+          sed 's/.*,"revision":\([^\}]*\).*/\1/')
+
+run_swtpm_ioctl ${SWTPM_INTERFACE} -s
+if [ $? -ne 0 ]; then
+	echo "Error: Could not shut down the ${SWTPM_INTERFACE} TPM."
+	exit 1
+fi
+
+if wait_process_gone ${SWTPM_PID} 4; then
+	echo "Error: ${SWTPM_INTERFACE} TPM should not be running anymore."
+	exit 1
+fi
+
+if [ $revision -lt 155 ]; then
+	echo "Skipping next tests since libtpms implements TPM 2.0 revision $revision, but need >= 155"
+	exit 0
+fi
+
+# Repeat the tests for the 'fixed' CryptAdjustPrimeCandidate test, which works
+# on 32 bit and 64 bit machines and produces the same results
+
+echo "Testing new CryptAdjustPrimeCandidate implementation"
+
+# copy all the state files; the files need libtpms (0.8.0) with
+# TPM 2.0 revsion 155; there the seeds are setup so that the fixed
+# RSA key generation algorithm is used
+cp -f ${TESTDIR}/data/tpm2state4/* ${TPM_PATH}
+
+run_swtpm ${SWTPM_INTERFACE} --tpm2
+
+kill_quiet -0 ${SWTPM_PID}
+if [ $? -ne 0 ]; then
+	echo "Error: ${SWTPM_INTERFACE} TPM did not start."
+	exit 1
+fi
+
+test1_exp=' 80 02 00 00 01 fa 00 00 00 00 80 00 00 00 00 00 01 e3 01 1a 00 01 00 0b 00 03 04 72 00 00 00 06 00 80 00 43 00 10 08 00 00 00 00 00 01 00 9b ef 34 ef e5 b1 2a 2b bc 85 71 5c 59 a5 67 f2 fe 13 38 15 c0 45 68 05 b1 27 c3 ef 63 89 21 c0 13 39 47 6d 99 82 b1 7c 79 d9 b7 9f 50 1c 2c 05 22 c3 53 02 76 f1 9b 8c 61 31 0d af a5 c1 12 28 f6 2b 02 24 d8 b5 04 51 c8 74 38 95 00 a9 24 88 40 a8 7f ce 49 eb f9 bd 67 f1 96 a8 39 3e e6 af 8c 7d ae 29 48 dc e3 64 1a 54 58 70 30 9f ae 96 de f4 2e 79 b1 89 fd 81 8f 29 b7 01 ab 92 30 32 0f 2c e9 0c 4f 6b cd aa b1 2e d1 dc 91 b0 d0 13 50 07 89 52 57 ce af e2 cf 4a 01 c2 7d 04 35 01 0e 7b 3e 42 98 91 71 a6 65 ab f2 31 97 4f 70 9c f8 fe a9 d1 5b 1c be 8c fc b8 0f 84 cc a1 52 42 94 74 92 76 94 0b 8f b4 95 8c b8 1e d5 7d 58 d1 3a 7f 8b 22 50 fc 57 39 6e bb e5 29 c8 7c b1 6b dd 11 9d 3b 06 2c 63 e4 d5 55 56 93 8c e7 06 86 2b 15 91 33 7c b2 14 43 57 5b 94 11 77 f4 6c d9 00 37 00 00 00 00 00 20 e3 b0 c4 42 98 fc 1c 14 9a fb f4 c8 99 6f b9 24 27 ae 41 e4 64 9b 93 4c a4 95 99 1b 78 52 b8 55 01 00 10 00 04 40 00 00 0b 00 04 40 00 00 0b 00 00 00 20 28 d0 26 fa fd 74 91 06 74 3e 27 c4 28 05 51 58 5e 5d 17 66 8e b5 21 83 5e d6 01 27 ef fc 05 d4 80 21 40 00 00 0b 00 40 e7 23 e1 bb 81 90 bb 1f 1a 32 d7 bd 07 f5 40 ad 27 a8 cd 70 1a 17 d6 af b6 8f 86 6d 6f c1 5d 65 de 07 82 63 2a da ac 20 73 90 a0 f4 5f cd c8 61 84 79 5b 9d c0 19 98 62 94 fb 35 f0 5d 91 f5 21 00 22 00 0b 07 eb bd 34 07 3e 1e 20 d6 cb b6 ea 62 61 1a 12 4e 84 85 b5 bf 5e 1b bd f4 6b 93 6a 1d 5f 32 3b 00 00 01 00 00'
+test2_exp=' 80 02 00 00 01 3a 00 00 00 00 80 00 00 00 00 00 01 23 00 5a 00 23 00 0b 00 03 04 72 00 00 00 06 00 80 00 43 00 10 00 03 00 10 00 20 ff cc 72 69 28 1a fd 2a 2c 5d 12 8d 7a 9e 7c 3e 6f 86 8a d7 e5 93 a0 f0 de 01 30 50 94 51 31 8f 00 20 6b 15 ca 0d 9a 67 4a e9 b6 d0 23 d2 e5 98 71 be 83 b5 f7 66 3f 63 ca 95 e7 7a e7 44 c4 94 89 95 00 37 00 00 00 00 00 20 e3 b0 c4 42 98 fc 1c 14 9a fb f4 c8 99 6f b9 24 27 ae 41 e4 64 9b 93 4c a4 95 99 1b 78 52 b8 55 01 00 10 00 04 40 00 00 0b 00 04 40 00 00 0b 00 00 00 20 28 d0 26 fa fd 74 91 06 74 3e 27 c4 28 05 51 58 5e 5d 17 66 8e b5 21 83 5e d6 01 27 ef fc 05 d4 80 21 40 00 00 0b 00 40 fa bb 14 5e 67 43 43 64 c8 29 e9 9a 7c 81 5e ff 4a 29 bb 5e 72 75 03 5f 62 d2 6d 7a 90 0a 6e 6d 68 ef 83 9d df 77 1f 76 0f c8 0d 1d 86 be 62 09 0b 56 68 2a f3 92 11 b1 2d 35 03 82 d1 ea d9 8a 00 22 00 0b 5f 43 81 4d 6a ed b8 36 cf 2d 92 50 44 a4 8f 03 8a ad 08 32 f5 23 49 6f 85 76 8b 95 a4 37 18 8e 00 00 01 00 00'
+test3_exp=' 80 02 00 00 00 71 00 00 00 00 80 00 00 00 00 00 00 5a 00 00 00 32 00 25 00 0b 00 06 04 60 00 00 00 06 00 80 00 43 00 20 25 f3 2c cf 3d 14 ed 18 a9 ae 67 82 28 7b 3b 21 7c d1 f4 24 12 d1 74 d5 69 7d 73 1b 6d ae 45 04 00 22 00 0b c5 fa ae 5e 37 7a ad d0 78 4e 1b e5 63 9c 5b a8 17 03 82 cb a0 e8 ab 39 40 69 24 48 df 72 8b c8 00 00 01 00 00'
+test4_exp=' 80 02 00 00 00 71 00 00 00 00 80 00 00 00 00 00 00 5a 00 00 00 32 00 25 00 0b 00 06 04 60 00 00 00 03 00 80 00 43 00 20 58 3a 75 c7 29 b6 df 2f 3c a1 1d 2a f3 79 ff aa 62 72 94 ec 4f c2 ad fa 5a 66 39 c3 4a 18 ad ae 00 22 00 0b 63 31 31 24 c4 61 f0 10 a4 46 53 85 c8 bd b3 d9 66 e4 4b a8 b9 bd 68 ad be 58 3e 10 09 20 66 dc 00 00 01 00 00'
+test5_exp1=' 80 02 00 00 01 12 00 00 00 00 80 00 00 00 00 00 00 fb 00 32 00 08 00 0b 00 03 04 72 00 00 00 0a 00 0b 00 22 00 20 60 5c 90 40 d5 ef 80 59 70 f4 90 3e 43 7a ce 49 1e 06 06 f0 e9 79 39 e4 a0 a1 8b d5 12 ca 86 9a 00 37 00 00 00 00 00 20 e3 b0 c4 42 98 fc 1c 14 9a fb f4 c8 99 6f b9 24 27 ae 41 e4 64 9b 93 4c a4 95 99 1b 78 52 b8 55 01 00 10 00 04 40 00 00 0b 00 04 40 00 00 0b 00 00 00 20 28 d0 26 fa fd 74 91 06 74 3e 27 c4 28 05 51 58 5e 5d 17 66 8e b5 21 83 5e d6 01 27 ef fc 05 d4 80 21 40 00 00 0b 00 40 5a 84 8d d0 73 da 49 f6 76 84 6e d1 56 13 39 4d 4b 67 0a 68 97 71 c9 a4 92 a6 aa 6d 30 4b 19 6c 69 fc a7 d5 b9 5c 8f 5a af 0c f6 72 b9 85 c5 d4 0a 09 f8 f7 16 4d 11 bc 5d ec cc 48 02 15 ce 79 00 22 00 0b 04 13 09 39 42 b3 86 80 67 68 2a d7 27 e3 c7 44 1d 1c b6 65 23 c3 ee f0 b8 b8 b5 ff ee 49 1d 4b 00 00 01 00 00'
+test5_exp2=' 80 02 00 00 00 95 00 00 00 00 80 00 00 01 00 00 00 7e 00 00 00 56 00 23 00 0b 00 02 04 52 00 00 00 10 00 10 00 10 00 10 00 20 af 9f be fc c8 95 21 71 04 2d 7d db 3f 42 aa 54 cc 2f a0 cf 55 82 78 f4 3f 01 88 27 46 53 2c 88 00 20 dc ad 67 2f d1 ea 89 01 f5 27 1f 58 3f a5 da 52 85 50 98 d5 06 81 10 13 86 12 d7 23 55 12 ea 0c 00 22 00 0b 72 c2 60 3f c8 bb 79 ea 92 86 7e a3 df 57 8d 15 e3 f1 10 a2 f9 1c a6 80 41 c3 cf e1 fa 43 83 2f 00 00 01 00 00'
+
+tx_cmd 1 0 "$test1_cmd" "$test1_exp" "" || exit 1 && echo "Test 1: OK"
+tx_cmd 1 1 "$test2_cmd" "$test2_exp" "" || exit 1 && echo "Test 2: OK"
+tx_cmd 1 1 "$test3_cmd" "$test3_exp" "" || exit 1 && echo "Test 3: OK"
+tx_cmd 1 1 "$test4_cmd" "$test4_exp" "" || exit 1 && echo "Test 4: OK"
+tx_cmd 1 1 "$test5_cmd1" "$test5_exp1" "" || exit 1
+tx_cmd 0 0 "$test5_cmd2" "$test5_exp2" "" || exit 1 && echo "Test 5: OK"
+
+run_swtpm_ioctl ${SWTPM_INTERFACE} -s
+if [ $? -ne 0 ]; then
+	echo "Error: Could not shut down the ${SWTPM_INTERFACE} TPM."
+	exit 1
+fi
+
+if wait_process_gone ${SWTPM_PID} 4; then
+	echo "Error: ${SWTPM_INTERFACE} TPM should not be running anymore."
+	exit 1
+fi
+
+exit 0

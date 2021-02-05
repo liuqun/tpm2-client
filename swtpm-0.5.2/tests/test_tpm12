@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+
+if [ ${SWTPM_TEST_EXPENSIVE:-0} -eq 0 ]; then
+	exit 77
+fi
+
+ROOT=${abs_top_builddir:-$(pwd)/..}
+TESTDIR=${abs_top_testdir:-${PWD}/$(dirname "$0")}
+
+function cleanup() {
+	if [ -n "${SWTPM_PID}" ]; then
+		kill -9 ${SWTPM_PID}
+	fi
+	if [ -n "${SWTPM1_PID}" ]; then
+		kill -9 ${SWTPM1_PID}
+	fi
+	if [ -n ${WORKDIR} ]; then
+		rm -rf ${WORKDIR}
+	fi
+	# clean up after (interrupted) test suite
+	rm -f /tmp/.key-*-0 /tmp/.delegation-0 /tmp/.transdigest-*-0
+}
+
+trap "cleanup" EXIT
+
+source ${TESTDIR}/common
+
+WORKDIR=$(mktemp -d)
+TESTLOG=${WORKDIR}/test.log
+
+# variables used by the TPM 1.2 test suite
+TPM_SERVER_PORT=65440
+TPM_SERVER_NAME=127.0.0.1
+SLAVE_TPM_PORT=65442
+SLAVE_TPM_SERVER=127.0.0.1
+
+SWTPM_INTERFACE=socket+socket
+
+# Start main TPM 1.2
+SWTPM_SERVER_PORT=${TPM_SERVER_PORT}
+SWTPM_SERVER_NAME=${TPM_SERVER_NAME}
+SWTPM_CTRL_PORT=65441
+
+mkdir -p ${WORKDIR}/tpm12.1
+SWTPM_SERVER_NO_DISCONNECT="1" run_swtpm ${SWTPM_INTERFACE} \
+	--tpmstate dir=${WORKDIR}/tpm12.1 \
+	--flags not-need-init
+SWTPM1_PID=${SWTPM_PID}
+
+# Start 2nd TPM 1.2
+SWTPM_SERVER_PORT=${SLAVE_TPM_PORT}
+SWTPM_SERVER_NAME=${SLAVE_TPM_SERVER}
+SWTPM_CTRL_PORT=65443
+
+mkdir -p ${WORKDIR}/tpm12.2
+SWTPM_SERVER_NO_DISCONNECT="1" run_swtpm ${SWTPM_INTERFACE} \
+	--tpmstate dir=${WORKDIR}/tpm12.2 \
+	--flags not-need-init
+
+pushd ${WORKDIR} &>/dev/null
+
+for ((i = 0; i < 3; i++)); do
+	curl -sJOL https://sourceforge.net/projects/ibmswtpm/files/tpm4769tar.gz/download
+	if [ $? -eq 0 ]; then
+		break
+	fi
+	# wait 3..10 seconds for a retry
+	sleep $((3 + (RANDOM & 7)))
+done
+hash=$(get_sha1_file tpm4769tar.gz)
+if [ $hash != ca99a3ccd3e41cdd9983086a9b944023b6049bbc ]; then
+	echo "Error: Downloaded file does not have expected hash."
+	echo "Actual: $hash"
+	exit 1
+fi
+tar -xzf tpm4769tar.gz
+
+pushd libtpm &>/dev/null
+
+patch -p0 < ${TESTDIR}/patches/libtpm.patch
+if [ $? -ne 0 ]; then
+	echo "Error: Patching failed."
+	exit 1
+fi
+
+./autogen
+LIBS="" CFLAGS="-g -O2" ./configure
+make -j$(nproc)
+
+pushd utils &>/dev/null
+
+# variables used by TPM 1.2 tools and test suite
+export TPM_SERVER_PORT=${TPM_SERVER_PORT} \
+    TPM_SERVER_NAME=${TPM_SERVER_NAME} \
+    SLAVE_TPM_PORT=${SLAVE_TPM_PORT} \
+    SLAVE_TPM_SERVER=${SLAVE_TPM_SERVER} \
+    PATH=$PWD:$PATH
+
+if wait_for_serversocket ${TPM_SERVER_PORT} 127.0.0.1 2; then
+	echo "Error: swtpm 1 did not open port ${TPM_SERVER_PORT}"
+	exit 1
+fi
+
+if wait_for_serversocket ${SLAVE_TPM_PORT} 127.0.0.1 2; then
+	echo "Error: swtpm 2 did not open port ${SLAVE_TPM_PORT}"
+	exit 1
+fi
+
+tpmbios
+
+ln -s makeidentity identity
+
+# keep test 1 last due to ERRORs it creates since we do not
+# restart the TPM
+for tst in 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 20 23 25 26 1; do
+
+    TPM_AUDITING=0
+    TPM_TRANSPORT=0
+
+    echo "Running test ${tst}"
+    if [[ "${tst}" =~ ^(1)$ ]]; then
+        $SWTPM_IOCTL --tcp :65441 -i
+        tpmbios
+    elif [[ "${tst}" = ^25$ ]]; then
+        TPM_AUDITING=1
+        TPM_TRANSPORT=1
+    fi
+
+    timeout 40 ./test_console.sh \
+        --non-interactive ${tst} >> ${TESTLOG} </dev/null
+    # Ignore all errors that occurred in test 1
+    if [ $tst != "1" ] && [ -n "$(grep "ERROR" ${TESTLOG})" ]; then
+        echo "Error occurred!"
+        cat ${TESTLOG}
+        exit 1
+    fi
+done
+
+$SWTPM_IOCTL --tcp :65441 -s
+wait_process_gone ${SWTPM1_PID} 4
+
+$SWTPM_IOCTL --tcp :65443 -s
+wait_process_gone ${SWTPM_PID} 4
+
+popd &>/dev/null
+popd &>/dev/null
+
+echo "OK"
+
+exit 0

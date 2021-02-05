@@ -1,0 +1,826 @@
+
+SWTPM=swtpm
+SWTPM_EXE=${SWTPM_EXE:-${ROOT}/src/swtpm/${SWTPM}}
+SWTPM_IOCTL=${SWTPM_IOCTL:-${ROOT}/src/swtpm_ioctl/swtpm_ioctl}
+SWTPM_BIOS=${SWTPM_BIOS:-${ROOT}/src/swtpm_bios/swtpm_bios}
+SWTPM_SETUP=${SWTPM_SETUP:-${ROOT}/src/swtpm_setup/swtpm_setup}
+SWTPM_CERT=${SWTPM_CERT:-${ROOT}/src/swtpm_cert/swtpm_cert}
+ECHO=$(type -P echo)
+
+# Note: Do not use file descriptors above 127 due to OpenBSD.
+
+# Kill a process quietly
+# @1: signal, e.g. -9
+# @2: pid
+function kill_quiet()
+{
+  local sig="$1"
+  local pid="$2"
+
+  bash -c "kill $sig $pid &>/dev/null"
+  return $?
+}
+
+# Wait for a regular file to appear and for it to have > 0 bytes
+#
+# @1: filename
+# @2: timeout in seconds
+function wait_for_file()
+{
+  local filename="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    [ -f "${filename}" ] && [ $(get_filesize ${filename}) != 0 ] && {
+      return 1
+    }
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a regular file to disappear
+#
+# @1: filename
+# @2: timeout in seconds
+function wait_file_gone()
+{
+  local filename="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    [ -f "${filename}" ] || return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a process with given PID to be gone
+#
+# @1: pid
+# @2: timeout in seconds
+function wait_process_gone()
+{
+  local pid="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    kill_quiet -0 ${pid} || return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a chardev to appear
+#
+# @1: filename
+# @2: timeout in seconds
+function wait_for_chardev()
+{
+  local filename="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    [ -c "${filename}" ] && return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a chardev to disappear
+#
+# @1: filename
+# @2: timeout in seconds
+function wait_chardev_gone()
+{
+  local filename="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    [ -c "${filename}" ] || return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a socket file to appear
+#
+# @1: filename
+# @2: timeout in seconds
+function wait_for_socketfile()
+{
+  local filename="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    [ -S "${filename}" ] && return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a socket file to disappear
+#
+# @1: filename
+# @2: timeout in seconds
+function wait_socketfile_gone()
+{
+  local filename="$1"
+  local timeout="$2"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    [ -S "${filename}" ] || return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a server socket to appear
+#
+# @1: port
+# @2: host
+# @3: timeout in seconds
+function wait_for_serversocket()
+{
+  local port="$1"
+  local host="$2"
+  local timeout="$3"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    (exec 127<>/dev/tcp/${host}/${port}) &>/dev/null
+    [ $? -eq 0 ] && return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a server socket to disappear
+#
+# @1: port
+# @2: host
+# @3: timeout in seconds
+function wait_serversocket_gone()
+{
+  local port="$1"
+  local host="$2"
+  local timeout="$3"
+
+  local loops=$((timeout * 10)) loop
+
+  for ((loop=0; loop<loops; loop++)); do
+    (exec 127<>/dev/tcp/${host}/${port}) &>/dev/null
+    [ $? -eq 0 ] || return 1
+    sleep 0.1
+  done
+  return 0
+}
+
+# Wait for a TCP port to open for listening
+# @1: port
+# @2: id of process to open port
+# @3: timeout in seconds
+function wait_port_open()
+{
+	local port=$1
+	local pid=$2
+	local timeout=$3
+
+	local loops=$((timeout * 10)) loop
+	local NETSTAT=$(type -P netstat)
+
+	for ((loop = 0; loop < loops; loop++)); do
+		if [ -n "$NETSTAT" ]; then
+			if [ -n "$(netstat -naptl 2>/dev/null |
+				   grep "LISTEN" |
+				   grep " $pid/" |
+				   grep ":$port ")" ]; then
+				return 1
+			fi
+		else
+			if [ -n "$(ss -nptl |
+				   grep ",pid=${pid}," |
+				   grep ":$port ")" ]; then
+				return 1
+			fi
+		fi
+		sleep 0.1
+	done
+	return 0
+}
+
+# Wait for a TCP listening port to close
+# @1: port
+# @2: id of process to close port
+# @3: timeout in seconds
+function wait_port_closed()
+{
+	local port=$1
+	local pid=$2
+	local timeout=$3
+
+	local loops=$((timeout * 10)) loop
+	local NETSTAT=$(type -P netstat)
+
+	for ((loop = 0; loop < loops; loop++)); do
+		if [ -n "$NETSTAT" ]; then
+			if [ -z "$(netstat -naptl 2>/dev/null |
+				   grep "LISTEN" |
+				   grep " $pid/" |
+				   grep ":$port ")" ]; then
+				return 1
+			fi
+		else
+			if [ -z "$(ss -nptl |
+				   grep ",pid=${pid}," |
+				   grep ":$port ")" ]; then
+				return 1
+			fi
+		fi
+		sleep 0.1
+	done
+	return 0
+}
+
+# Run the swtpm_ioctl command
+#
+# @param1: type of interface
+function run_swtpm_ioctl()
+{
+	local iface=$1; shift
+
+	case "${iface}" in
+	cuse)
+		[ -z "${SWTPM_DEV_NAME}" ] && {
+			echo "SWTPM_DEV_NAME not defined"
+			exit 1
+		}
+		${SWTPM_IOCTL} $@ ${SWTPM_DEV_NAME}
+		return $?
+		;;
+	socket+socket|unix+socket)
+		[ -z "${SWTPM_SERVER_NAME}" ] && {
+			echo "SWTPM_SERVER_NAME not defined"
+			exit 1
+		}
+		[ -z "${SWTPM_SERVER_PORT}" ] && {
+			echo "SWTPM_SERVER_PORT not defined"
+			exit 1
+		}
+		${SWTPM_IOCTL} \
+			--tcp ${SWTPM_SERVER_NAME}:${SWTPM_CTRL_PORT} \
+			$@
+		return $?
+		;;
+	socket+unix|unix+unix)
+		[ -z "${SWTPM_CTRL_UNIX_PATH}" ] && {
+			echo "SWTPM_CTRL_UNIX_PATH not defined"
+			exit 1
+		}
+		${SWTPM_IOCTL} \
+			--unix ${SWTPM_CTRL_UNIX_PATH} \
+			$@
+		return $?
+		;;
+	esac
+}
+
+# Start the swtpm in the background
+#
+# @param1: type of interface
+# @param2.. : parameters to pass to 'swtpm'
+function run_swtpm()
+{
+	local iface=$1; shift
+	local swtpm_server_disconnect=""
+
+	echo "==== Starting swtpm with interfaces ${iface} ===="
+	if [ -z "${SWTPM_SERVER_NO_DISCONNECT}" ]; then
+		swtpm_server_disconnect=",disconnect"
+	fi
+
+	case "${iface}" in
+	cuse)
+		[ -z "${SWTPM_DEV_NAME}" ] && {
+			echo "SWTPM_DEV_NAME not defined"
+			exit 1
+		}
+
+		if wait_chardev_gone ${SWTPM_DEV_NAME} 2; then
+			echo "${SWTPM_DEV_NAME} is still there and may be used."
+			exit 1
+		fi
+
+		${SWTPM_EXE} cuse "$@" ${SWTPM_TEST_SECCOMP_OPT} \
+			-n ${SWTPM_DEV_NAME##*/}
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			echo "Could not run ${SWTPM_EXE} using ${iface}"
+			exit 1
+		fi
+		if wait_for_chardev ${SWTPM_DEV_NAME} 2; then
+			echo "$SWTPM_DEV_NAME did not appear"
+			exit 1
+		fi
+
+		SWTPM_PID=$(ps aux |
+		            grep "cuse" |
+		            grep -E " ${SWTPM_DEV_NAME##*/}\$" |
+		            grep -v grep |
+		            gawk '{print $2}')
+		return $?
+		;;
+	socket+socket)
+		[ -z "${SWTPM_SERVER_PORT}" ] && {
+			echo "SWTPM_SERVER_PORT not defined"
+			exit 1
+		}
+		[ -z "${SWTPM_CTRL_PORT}" ] && {
+			echo "SWTPM_CTRL_PORT not defined"
+			exit 1
+		}
+
+		if wait_serversocket_gone "${SWTPM_SERVER_PORT}" 127.0.0.1 2; then
+			echo "Port ${SWTPM_SERVER_PORT} is still used"
+			exit 1
+		fi
+		if wait_serversocket_gone "${SWTPM_CTRL_PORT}" 127.0.0.1 1; then
+			echo "Port ${SWTPM_CTRL_PORT} is still used"
+			exit 1
+		fi
+
+		${SWTPM_EXE} socket "$@" \
+			${SWTPM_TEST_SECCOMP_OPT} \
+			--server type=tcp,port=${SWTPM_SERVER_PORT}${swtpm_server_disconnect} \
+			--ctrl type=tcp,port=${SWTPM_CTRL_PORT} &
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			echo "Could not run ${SWTPM_EXE} using ${iface}"
+			exit 1
+		fi
+		SWTPM_PID=$!
+		if wait_for_serversocket "${SWTPM_SERVER_PORT}" 127.0.0.1 2; then
+			echo "Server did not open port ${SWTPM_SERVER_PORT}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		if wait_for_serversocket "${SWTPM_CTRL_PORT}" 127.0.0.1 1; then
+			echo "Server did not open port ${SWTPM_CTRL_PORT}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		return 0
+		;;
+	socket+unix)
+		[ -z "${SWTPM_SERVER_PORT}" ] && {
+			echo "SWTPM_SERVER_PORT not defined"
+			exit 1
+		}
+		[ -z "${SWTPM_CTRL_UNIX_PATH}" ] && {
+			echo "SWTPM_CTRL_UNIX_PATH not defined"
+			exit 1
+		}
+
+		if wait_serversocket_gone "${SWTPM_SERVER_PORT}" 127.0.0.1 2; then
+			echo "Port ${SWTPM_SERVER_PORT} is still used"
+			exit 1
+		fi
+		if wait_socketfile_gone "${SWTPM_CTRL_UNIX_PATH}" 2; then
+			echo "Unix socket ${SWTPM_CTRL_UNIX_PATH} is still there"
+			exit 1
+		fi
+
+		${SWTPM_EXE} socket "$@" \
+			${SWTPM_TEST_SECCOMP_OPT} \
+			--server type=tcp,port=${SWTPM_SERVER_PORT}${swtpm_server_disconnect} \
+			--ctrl type=unixio,path=${SWTPM_CTRL_UNIX_PATH} &
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			echo "Could not run ${SWTPM_EXE} using ${iface}"
+			exit 1
+		fi
+		[ $rc -ne 0 ] && return $rc
+		SWTPM_PID=$!
+		if wait_for_serversocket "${SWTPM_SERVER_PORT}" 127.0.0.1 2; then
+			echo "Server did not open port ${SWTPM_SERVER_PORT}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		if wait_for_socketfile ${SWTPM_CTRL_UNIX_PATH} 1; then
+			echo "Server did not create UnixIO socket ${SWTPM_CTRL_UNIX_PATH}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		return 0
+		;;
+	unix+socket)
+		[ -z "${SWTPM_CMD_UNIX_PATH}" ] && {
+			echo "SWTPM_CMD_UNIX_PATH not defined"
+			exit 1
+		}
+		[ -z "${SWTPM_CTRL_PORT}" ] && {
+			echo "SWTPM_CTRL_PORT not defined"
+			exit 1
+		}
+
+		if wait_socketfile_gone "${SWTPM_CMD_UNIX_PATH}" 2; then
+			echo "Unix socket ${SWTPM_CMD_UNIX_PATH} is still there"
+			exit 1
+		fi
+		if wait_serversocket_gone "${SWTPM_CTRL_PORT}" 127.0.0.1 1; then
+			echo "Port ${SWTPM_CTRL_PORT} is still used"
+			exit 1
+		fi
+
+		${SWTPM_EXE} socket "$@" \
+			${SWTPM_TEST_SECCOMP_OPT} \
+			--server type=unixio,path=${SWTPM_CMD_UNIX_PATH} \
+			--ctrl type=tcp,port=${SWTPM_CTRL_PORT} &
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			echo "Could not run ${SWTPM_EXE} using ${iface}"
+			exit 1
+		fi
+		SWTPM_PID=$!
+		if wait_for_socketfile ${SWTPM_CMD_UNIX_PATH} 2; then
+			echo "Server did not create UnixIO socket ${SWTPM_CMD_UNIX_PATH}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		if wait_for_serversocket "${SWTPM_CTRL_PORT}" 127.0.0.1 1; then
+			echo "Server did not open port ${SWTPM_CTRL_PORT}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		return 0
+		;;
+	unix+unix)
+		[ -z "${SWTPM_CMD_UNIX_PATH}" ] && {
+			echo "SWTPM_CMD_UNIX_PATH not defined"
+			exit 1
+		}
+		[ -z "${SWTPM_CTRL_UNIX_PATH}" ] && {
+			echo "SWTPM_CTRL_UNIX_PATH not defined"
+			exit 1
+		}
+
+		if wait_socketfile_gone "${SWTPM_CMD_UNIX_PATH}" 2; then
+			echo "Unix socket ${SWTPM_CMD_UNIX_PATH} is still there"
+			exit 1
+		fi
+		if wait_socketfile_gone "${SWTPM_CTRL_UNIX_PATH}" 2; then
+			echo "Unix socket ${SWTPM_CTRL_UNIX_PATH} is still there"
+			exit 1
+		fi
+
+		${SWTPM_EXE} socket "$@" \
+			${SWTPM_TEST_SECCOMP_OPT} \
+			--server type=unixio,path=${SWTPM_CMD_UNIX_PATH} \
+			--ctrl type=unixio,path=${SWTPM_CTRL_UNIX_PATH} &
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			echo "Could not run ${SWTPM_EXE} using ${iface}"
+			exit 1
+		fi
+		SWTPM_PID=$!
+		if wait_for_socketfile ${SWTPM_CMD_UNIX_PATH} 2; then
+			echo "Server did not create UnixIO socket ${SWTPM_CMD_UNIX_PATH}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		if wait_for_socketfile ${SWTPM_CTRL_UNIX_PATH} 1; then
+			echo "Server did not create UnixIO socket ${SWTPM_CTRL_UNIX_PATH}"
+			kill -9 ${SWTPM_PID}
+			exit 1
+		fi
+		return 0
+		;;
+	esac
+}
+
+# Open the command channel/device on fd 100
+#
+# @param1: type of interface
+# @param2: must be '100'
+function swtpm_open_cmddev()
+{
+	local iface=$1; shift
+
+	[ "$1" != "100" ] && {
+		echo "swtpm_opendev: Filedescriptor must be 100"
+		exit 1
+	}
+
+	case "${iface}" in
+	cuse)
+		[ -z "${SWTPM_DEV_NAME}" ] && {
+			echo "SWTPM_DEV_NAME not defined"
+			exit 1
+		}
+		exec 100<>${SWTPM_DEV_NAME}
+		return $?
+		;;
+	socket+socket|socket+unix)
+		[ -z "${SWTPM_SERVER_NAME}" ] && {
+			echo "SWTPM_SERVER_NAME not defined"
+			exit 1
+		}
+		[ -z "${SWTPM_SERVER_PORT}" ] && {
+			echo "SWTPM_SERVER_PORT not defined"
+			exit 1
+		}
+		# Must first close on OS/X
+		exec 100>&-
+		exec 100<>/dev/tcp/${SWTPM_SERVER_NAME}/${SWTPM_SERVER_PORT}
+		return $?
+		;;
+	unix+socket|unix+unix)
+		;;
+	*)
+		echo "swtpm_opendev: unsupported interface $iface"
+		exit 1
+	esac
+}
+
+# Transmit a command on fd 100
+#
+# @param1: type of interface
+function swtpm_cmd_tx()
+{
+	local iface=$1
+	local cmd_path resp_path
+
+	cmd_path=$(mktemp)
+
+	case "${iface}" in
+	cuse)
+		echo -en "$2" > ${cmd_path}
+		cat ${cmd_path} >&100
+		dd if=/proc/self/fd/100 2>/dev/null | \
+		    od -t x1 -A n | \
+		    tr -s ' ' | \
+		    tr -d '\n' | \
+		    sed 's/ $//g'
+		;;
+	socket+socket|socket+unix)
+		echo -en "$2" > ${cmd_path}
+		cat ${cmd_path} >&100
+		cat <&100 | od -t x1 -A n | \
+                   tr -s ' ' | \
+                   tr -d '\n' | \
+                   sed 's/ $//g'
+		;;
+	unix+socket|unix+unix)
+		echo -en "$2" > ${cmd_path}
+		socat -x -t50 \
+			FILE:${cmd_path},rdonly \
+			UNIX-CLIENT:${SWTPM_CMD_UNIX_PATH} 2>&1 | \
+		  sed -n '/^ /p' | \
+		  tail -n1
+		;;
+	*)
+		echo "swtpm_opendev: unsupported interface $iface"
+		rm -f ${cmd_path}
+		exit 1
+	esac
+
+	rm -f ${cmd_path}
+}
+
+# Transmit a control command on fd 101
+#
+# @param1: type of interface
+function swtpm_ctrl_tx()
+{
+	local iface=$1
+	local ctrl_path resp_path
+
+	case "${iface}" in
+	socket+socket|unix+socket)
+		$ECHO -en "$2" >&101
+		cat <&101 | od -t x1 -A n -w128
+		;;
+	socket+unix|unix+unix)
+		ctrl_path=$(mktemp)
+		echo -en "$2" > ${ctrl_path}
+		socat -x -t50 \
+			FILE:${ctrl_path},rdonly \
+			UNIX-CLIENT:${SWTPM_CTRL_UNIX_PATH} 2>&1 | \
+		  sed -n '/^ /p' | \
+		  tail -n1
+		rm -f ${ctrl_path}
+		;;
+	*)
+		echo "swtpm_opendev: unsupported interface $iface"
+		exit 1
+	esac
+}
+
+
+# Run swtpm_bios
+#
+# @param1: type of interface
+# @param2 ...: parameters to pass to swtpm_bios
+function run_swtpm_bios()
+{
+	local iface=$1
+
+	shift
+
+	case "${iface}" in
+	cuse)
+		[ -z "${SWTPM_DEV_NAME}" ] && {
+			echo "SWTPM_DEV_NAME not defined"
+			exit 1
+		}
+		${SWTPM_BIOS} --tpm-device ${SWTPM_DEV_NAME} $@
+		return $?
+		;;
+	unix+unix|unix+socket)
+		[ -z "${SWTPM_CMD_UNIX_PATH}" ] && {
+			echo "SWTPM_CMD_UNIX_PATH not defined"
+			exit 1
+		}
+		${SWTPM_BIOS} --unix ${SWTPM_CMD_UNIX_PATH} $@
+		return $?
+		;;
+	socket+unix|socket+socket)
+		[ -z "${SWTPM_SERVER_PORT}" ] && {
+			echo "SWTPM_SERVER_PORT not defined"
+			exit 1
+		}
+		${SWTPM_BIOS} --tcp ${SWTPM_SERVER_NAME}:${SWTPM_SERVER_PORT} $@
+		return $?
+		;;
+	*)
+		echo "run_swtpm_bios: unsupported interface $iface"
+		exit 1
+	esac
+}
+
+# Get the size of a file in bytes
+#
+# @1: filename
+function get_filesize()
+{
+	if [[ "$(uname -s)" =~ (Linux|CYGWIN_NT-) ]]; then
+		stat -c%s $1
+	else
+		# OpenBSD
+		stat -f%z $1
+	fi
+}
+
+# Get the file mode bits in octal format
+#
+# @1: filename
+function get_filemode()
+{
+	if [[ "$(uname -s)" =~ (Linux|CYGWIN_NT-) ]]; then
+		stat -c%a $1
+	else
+		# BSDs
+		stat -f%Lp $1
+	fi
+}
+
+# Get the file owner uid and gid
+#
+# @1: filename
+function get_fileowner()
+{
+	if [[ "$(uname -s)" =~ (Linux|CYGWIN_NT-) ]]; then
+		stat -c"%u %g" $1
+	else
+		# BSDs
+		stat -f"%u %g" $1
+	fi
+}
+
+# Get the SHA1 of a file
+#
+# @1: filename
+function get_sha1_file()
+{
+	if ! [ -r $1 ]; then
+		echo "[file $1 does not exist]"
+		return
+	fi
+	case "$(uname -s)" in
+	Linux|CYGWIN*)
+		sha1sum $1 | cut -f1 -d" "
+		;;
+	Darwin)
+		shasum $1 | cut -f1 -d" "
+		;;
+	*)
+		# OpenBSD
+		sha1 $1 | cut -d "=" -f2 | tr -d " "
+	esac
+}
+
+# Display process that have the same name
+#
+# @1: process name to match
+function display_processes_by_name()
+{
+	local name="$1"
+
+	if [ 1 -eq 0 ]; then
+		ps aux | grep "${name}" | grep -v grep
+	fi
+}
+
+# Check whether seccomp support is compiled in
+#
+# @1: path to swtpm
+#
+# Returns 0 if seccomp is supported, 1 otherwise
+function has_seccomp_support()
+{
+	local swtpm_exe="$1"
+
+	local tmp=$(${swtpm_exe} socket --help | grep -E "\-\-seccomp")
+
+	[ -n "${tmp}" ] && return 0
+	return 1
+}
+
+# Check whether the given process runs with the given seccomp
+# profile type IF the given swtpm executable has seccomp support
+#
+# @1: Path to swtpm executable from which process was started
+# @2: The process ID
+# @3: The expected seccomp profile type
+function check_seccomp_profile()
+{
+	local swtpm_exe="$1"
+	local swtpm_pid="$2"
+	local profile="$3"
+
+	local tmp
+
+	if ! has_seccomp_support "${swtpm_exe}"; then
+		return 0
+	fi
+	if [ -n "${SWTPM_TEST_SECCOMP_OPT}" ]; then
+		return 0
+	fi
+
+	tmp=$(grep -E "^Seccomp" /proc/self/status |
+		cut -d":" -f2 |
+		tr -d '\t')
+	if [ "${tmp}" != "0" ]; then
+		echo "check_seccomp_profile: skipping check since test env." \
+		"runs with in a seccomp profile overriding --seccomp"
+		return 0
+	fi
+
+	tmp=$(grep -E "^Seccomp" /proc/${swtpm_pid}/status |
+		cut -d":" -f2 |
+		tr -d '\t')
+	if [ "${tmp}" != ${profile} ]; then
+		echo "Process ${swtpm_pid} has wrong seccomp profile type"
+		echo "Expected: ${profile}"
+		echo "Actual  : ${tmp}"
+		return 1
+	fi
+	return 0
+}
+
+# Validate the content of the pid file
+# @1: Expected PID
+# @2: pid file filename
+function validate_pidfile()
+{
+	local pid="$1"
+	local pidfile="$2"
+	local rpid="$(cat $pidfile)"
+
+	if [ -z "$rpid" ]; then
+		sleep 0.1
+		rpid="$(cat $pidfile)"
+	fi
+
+	if [ "$pid" != "$rpid" ]; then
+		echo "Error: pid file contains unexpected PID value."
+		echo "expected: $pid"
+		echo "actual  : $(cat $pidfile)"
+		exit 1
+	fi
+}

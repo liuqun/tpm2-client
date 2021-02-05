@@ -1,0 +1,89 @@
+=head1 NAME
+
+swtpm-localca.conf - Configuration file for swtpm-localca
+
+=head1 DESCRIPTION
+
+The file I</etc/swtpm-localca.conf> contains configuration variables
+for the I<swtpm-localca> program.
+
+Entries may contain shell variables that will be resolved. All shell
+variables must be formatted like this: '${varname}'.
+
+Users may write their own configuration into
+I<${XDG_CONFIG_HOME}/swtpm-localca.conf> or if XDG_CONFIG_HOME
+is not set it may be in I<${HOME}/.config/swtpm-localca.conf>.
+
+The following configuration variables are supported:
+
+=over 4
+
+=item B<statedir>
+
+The name of a directory where to store data into. A lock will be created
+in this directory.
+
+=item B<signinkey>
+
+The file containing the key used for signing the certificates. Provide
+a key in PEM format or a pkcs11 URI.
+
+=item B<signingkey_password>
+
+The password to use for the signing key.
+
+=item B<issuercert>
+
+The file containing the certificate for this CA. Provide a certificate
+in PEM format.
+
+=item B<certserial>
+
+The name of file containing the serial number for the next certificate.
+
+=item B<TSS_TCSD_HOSTNAME>
+
+This variable can be set to the host where B<tcsd> is running on in case
+the signing key is a GnuTLS TPM 1.2 key. By default I<localhost> will be
+used.
+
+=item B<TSS_TCSD_PORT>
+
+This variable can be set to the port on which  B<tcsd> is listening for
+connections. By default port I<30003> will be used.
+
+=item B<env:<environment variable name>=<value>>
+
+Environment variables, that are needed by pkcs11 modules, can be set using
+this format. An example for such an environment variable may look like this:
+
+    env:MY_MODULE_PKCS11_CONFIG = /tmp/mymodule-pkcs11.conf
+
+The line must not contain any trailing spaces.
+
+=back
+
+=head1 EXAMPLE
+
+An example I<swtpm-localca.conf> file may look as follows:
+
+ statedir = /var/lib/swtpm_localca
+ signingkey = /var/lib/swtpm_localca/signkey.pem
+ issuercert = /var/lib/swtpm_localca/issuercert.pem
+ certserial = /var/lib/swtpm_localca/certserial
+
+With a PKCS11 URI it may look like this:
+
+ statedir = /var/lib/swtpm-localca
+ signingkey = pkcs11:model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=891b99c169e41301;token=mylabel;id=%00;object=mykey;type=public
+ issuercert = /var/lib/swtpm-localca/swtpm-localca-tpmca-cert.pem
+ certserial = /var/lib/swtpm-localca/certserial
+ SWTPM_PKCS11_PIN = 1234
+
+=head1 SEE ALSO
+
+B<swtpm-localca>
+
+=head1 REPORTING BUGS
+
+Report bugs to Stefan Berger <stefanb@linux.vnet.ibm.com>

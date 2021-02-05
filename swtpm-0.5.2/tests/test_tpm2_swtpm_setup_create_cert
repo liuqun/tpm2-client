@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+# For the license, see the LICENSE file in the root directory.
+
+TOPBUILD=${abs_top_builddir:-$(dirname "$0")/..}
+TOPSRC=${abs_top_srcdir:-$(dirname "$0")/..}
+TESTDIR=${abs_top_testdir:-$(dirname "$0")}
+
+PATH=${TOPBUILD}/src/swtpm:$PATH
+
+SWTPM_SETUP=${TOPBUILD}/src/swtpm_setup/swtpm_setup
+SWTPM_LOCALCA=${TOPBUILD}/samples/swtpm-localca
+SWTPM=${TOPBUILD}/src/swtpm/swtpm
+
+workdir=$(mktemp -d "/tmp/path with spaces.XXXXXX")
+
+SIGNINGKEY=${workdir}/signingkey.pem
+ISSUERCERT=${workdir}/issuercert.pem
+CERTSERIAL=${workdir}/certserial
+
+PATH=${TOPBUILD}/src/swtpm_bios:$PATH
+
+trap "cleanup" SIGTERM EXIT
+
+function cleanup()
+{
+	rm -rf "${workdir}"
+}
+
+# We want swtpm_cert to use the local CA and see that the
+# local CA script automatically creates a signingkey and
+# self-signed certificate
+
+cat <<_EOF_ > "${workdir}/swtpm-localca.conf"
+statedir=${workdir}
+signingkey = ${SIGNINGKEY}
+issuercert = ${ISSUERCERT}
+certserial = ${CERTSERIAL}
+_EOF_
+
+cat <<_EOF_ > "${workdir}/swtpm-localca.options"
+--tpm-manufacturer IBM
+--tpm-model swtpm-libtpms
+--tpm-version 2
+--platform-manufacturer "Fedora XYZ"
+--platform-version 2.1
+--platform-model "QEMU A.B"
+_EOF_
+
+cat <<_EOF_ > "${workdir}/swtpm_setup.conf"
+create_certs_tool=${SWTPM_LOCALCA}
+create_certs_tool_config=${workdir}/swtpm-localca.conf
+create_certs_tool_options=${workdir}/swtpm-localca.options
+_EOF_
+
+# We need to adapt the PATH so the correct swtpm_cert is picked
+export PATH=${TOPBUILD}/src/swtpm_cert:${PATH}
+
+keysizes="2048"
+if [ -n "$($SWTPM_SETUP --tpm2 --print-capabilities |
+	    grep tpm2-rsa-keysize-3072 )" ]; then
+	keysizes+=" 3072"
+fi
+
+for keysize in $(echo $keysizes); do
+	echo "Testing with RSA keysize $keysize"
+	# we need to create at least one cert: --create-ek-cert
+	$SWTPM_SETUP \
+		--tpm2 \
+		--allow-signing \
+		--tpm-state "${workdir}" \
+		--create-ek-cert \
+		--create-platform-cert \
+		--config "${workdir}/swtpm_setup.conf" \
+		--logfile "${workdir}/logfile" \
+		--tpm "${SWTPM} socket ${SWTPM_TEST_SECCOMP_OPT}" \
+		--rsa-keysize ${keysize} \
+		--overwrite
+
+	if [ $? -ne 0 ]; then
+		echo "Error: Could not run $SWTPM_SETUP."
+		echo "Logfile output:"
+		cat "${workdir}/logfile"
+		exit 1
+	fi
+
+	if [ ! -r "${SIGNINGKEY}" ]; then
+		echo "Error: Signingkey file ${SIGNINGKEY} was not created."
+		exit 1
+	fi
+
+	if [ ! -r "${ISSUERCERT}" ]; then
+		echo "Error: Issuer cert file ${ISSUERCERT} was not created."
+		exit 1
+	fi
+
+	if [ ! -r "${CERTSERIAL}" ]; then
+		echo "Error: Cert serial number file ${CERTSERIAL} was not created."
+		exit 1
+	fi
+
+	rm -rf ${SIGNINGKEY} ${ISSUERCERT} ${CERTSERIAL}
+done
+
+echo "Test 1: OK"
+
+
+# we need to create at least one cert: --create-ek-cert
+$SWTPM_SETUP \
+	--tpm2 \
+	--ecc \
+	--tpm-state "${workdir}" \
+	--create-ek-cert \
+	--config "${workdir}/swtpm_setup.conf" \
+	--logfile "${workdir}/logfile" \
+	--tpm "${SWTPM} socket ${SWTPM_TEST_SECCOMP_OPT}" \
+	--overwrite
+
+if [ $? -ne 0 ]; then
+	echo "Error: Could not run $SWTPM_SETUP."
+	echo "Logfile output:"
+	cat "${workdir}/logfile"
+	exit 1
+fi
+
+if [ ! -r "${SIGNINGKEY}" ]; then
+	echo "Error: Signingkey file ${SIGNINGKEY} was not created."
+	exit 1
+fi
+
+if [ ! -r "${ISSUERCERT}" ]; then
+	echo "Error: Issuer cert file ${ISSUERCERT} was not created."
+	exit 1
+fi
+
+if [ ! -r "${CERTSERIAL}" ]; then
+	echo "Error: Cert serial number file ${CERTSERIAL} was not created."
+	exit 1
+fi
+
+echo "Test 2: OK"
+
+exit 0

@@ -1,0 +1,128 @@
+env:
+  global:
+  - secure: mcAXlw5k/1yOP2RMKWEtvU2SnsuHo5Idoi5zZ+hLj2CzdvT77Wh8HWQ7NRsiamL+3dMPxzzy60IYNZQ8F29y3rvN7gASVsYn31G5UkmfvpPLiucuPADM1rNm8FYNlia0GFW4keP+LwMrBo6KDK9k0T8w4lquXBwMmNzhvCYVwkBIM5YwhXW5nk1dOJtf6zAb6gDH/VNEYTXXRKjA5Jvln7+EVHY61pEx6rJGa2GU0A49ms5UMJVzv85FraiHwlCPnNhQWGJ6sStqxsd5i6VBTCrkwMqnnA+ZBosqIJkBXp4OkudfPWE9vsn7TtuYdbheOkUIv6GRPFJNG3Vm3Wh/IwvSOILS5xAmsB3MxyK3BlILOYcsywiSzV5J4+s5Vnih4FaRQ3xx46Fq2ldatuk7npIxfdd3Co5V1KZh1pq3ckAdKlY2PEsQc0Kh72Lxf2N0XVw4s0H7gzrFk4/ghIvoCmAWBRSrN+R7wleEcmxDRgUZHP6Qc2ZNP+kljhBLqzinW2jyxPAqQS17g5Tb01+WfqkG/T5jboyIIe/OEQ5XbQp3/d8rUA8STpJxD25lwKKqlIqU3ZFWYfRT+pA0x83AdiTm53CJSQqFyCLtZCqK0XSZbLfmFzjZJ7I8FQxZoF2o03DDkL1Xs0z0sj87i3UnsYzxGdSrcU2JDK7qRIn39sM=
+sudo: required
+language: c
+dist: xenial
+addons:
+  apt:
+      packages:
+        - automake
+        - autoconf
+        - libtool
+        - libssl-dev
+        - sed
+        - make
+        - gawk
+        - sed
+        - bash
+        - dh-exec
+        - pylint3
+        - python3-cryptography
+        - python3-pip
+        - python3-setuptools
+        - python3-twisted
+        - libfuse-dev
+        - libglib2.0-dev
+        - libgmp-dev
+        - expect
+        - libtasn1-dev
+        - socat
+        - findutils
+        - gnutls-dev
+        - gnutls-bin
+        - libasan2
+        - softhsm2
+        - libseccomp-dev
+  coverity_scan:
+    project:
+      name: swtpm
+      description: Build submitted via Travis CI
+    notification_email: stefanb@linux.vnet.ibm.com
+    build_command_prepend: "git clone https://github.com/stefanberger/libtpms && cd libtpms && ./autogen.sh --with-openssl --prefix=/usr --with-tpm2 && make -j$(${NPROC:-nproc}) && sudo make install && cd .. && ./autogen.sh --with-openssl"
+    build_command: make -j$(${NPROC:-nproc})
+    branch_pattern: coverity_scan
+before_install:
+  - test $TRAVIS_BRANCH != coverity_scan -o ${TRAVIS_JOB_NUMBER##*.} = 1 || exit 0
+  - |  # We need trousers only for the tss user
+    if [ "$(uname -s)" = "Linux" ]; then
+      sudo rm -rf /dev/tpm* # This is a work-around for Bionic where trousers otherwise fails to install
+      sudo apt-get -y install trousers
+    fi
+script:
+  - sudo pip3 install --upgrade pip
+  - sudo pip3 install --upgrade wheel
+  - sudo pip3 install --upgrade cryptography
+  - if [ ! -d libtpms ]; then git clone https://github.com/stefanberger/libtpms; fi
+  - cd libtpms
+  - if [ -n "${LIBTPMS_GIT_CHECKOUT}" ]; then
+       git checkout "${LIBTPMS_GIT_CHECKOUT}" -b testing;
+    fi
+  - CFLAGS="${LIBTPMS_CFLAGS:--g -O2}" LDFLAGS="${LIBTPMS_LDFLAGS}"
+       ./autogen.sh --with-openssl --prefix=${LIBTPMS_PREFIX:-/usr} --with-tpm2 ${LIBTPMS_CONFIG}
+       && make -j$(${NPROC:-nproc})
+       && sudo make install
+  - cd ..
+  - ./autogen.sh ${CONFIG}
+      && ${SUDO} make clean
+      && export SWTPM_TEST_EXPENSIVE=${SWTPM_TEST_EXPENSIVE:-1}
+      && export SWTPM_TEST_IBMTSS2=${SWTPM_TEST_IBMTSS2:-0}
+      && ${SUDO} make -j$(${NPROC:-nproc}) ${CHECK} VERBOSE=1
+  - if [ -n "${RUN_TEST}" ]; then
+        sudo make install
+        && sudo ${PREFIX}/bin/swtpm_setup
+              --tpmstate /tmp --create-ek-cert --create-platform-cert --tpm2
+         || { exit 1; };
+    fi
+after_failure:
+  - for f in tests/*.log; do echo ">>>>>>> $f <<<<<<<"; cat $f; done
+matrix:
+  include:
+    - env: PREFIX="/usr"
+           CONFIG="--with-openssl --prefix=${PREFIX}"
+           CHECK="distcheck"
+           RUN_TEST="1"
+    - dist: bionic
+      env: PREFIX="/usr"
+           CONFIG="--with-openssl --prefix=/usr --enable-test-coverage"
+           SUDO="sudo"
+           CHECK="check"
+           SWTPM_TEST_IBMTSS2="1"
+      after_success:
+      - pylint3 --max-line-length=100 src/swtpm_setup/py_swtpm_setup/*.py || exit 1;
+      - pylint3 --max-line-length=100 samples/py_swtpm_localca/*.py || exit 1;
+      before_script:
+      - sudo apt-get -y install tss2
+      - sudo pip install cpp-coveralls
+      - p=$PWD; while [ "$PWD" != "/" ]; do chmod o+x . &>/dev/null ; cd .. ; done; cd $p
+        && sudo mkdir src/swtpm/.libs
+        && sudo chown nobody src/swtpm src/swtpm/.libs
+      after_success:
+        - uidgid="$(id -nu):$(id -ng)" &&
+          sudo chown -R ${uidgid} ./ &&
+          cpp-coveralls --gcov-options '\-lp' -e libtpms
+    - env: CFLAGS="-fsanitize=address -g -fno-omit-frame-pointer -fno-sanitize-recover"
+           LIBTPMS_CFLAGS="-fsanitize=address -g -fno-omit-frame-pointer -fno-sanitize-recover"
+           LIBS="-lasan"
+           ASAN_OPTIONS="halt_on_error=1"
+           PREFIX="/usr"
+           CONFIG="--with-openssl --prefix=${PREFIX} --without-seccomp"
+           SUDO="sudo"
+           CHECK="check"
+    - env: CFLAGS="-fsanitize=address -g -fno-omit-frame-pointer -fno-sanitize-recover"
+           LIBTPMS_CFLAGS="-fsanitize=address -g -fno-omit-frame-pointer -fno-sanitize-recover"
+           LIBTPMS_CONFIG="--disable-use-openssl-functions"
+           LIBS="-lasan"
+           ASAN_OPTIONS="halt_on_error=1"
+           PREFIX="/usr"
+           CONFIG="--with-openssl --prefix=${PREFIX} --without-seccomp"
+           SUDO="sudo"
+           CHECK="check"
+    - env: CFLAGS="-fsanitize=undefined -g -fno-omit-frame-pointer -fno-sanitize-recover"
+           LIBTPMS_CFLAGS="-fsanitize=undefined -g -fno-omit-frame-pointer -fno-sanitize-recover"
+           LIBS="-lubsan"
+           UBSAN_OPTIONS="halt_on_error=1"
+           PREFIX="/usr"
+           CONFIG="--with-openssl --prefix=${PREFIX}"
+           SUDO="sudo"
+           CHECK="check"

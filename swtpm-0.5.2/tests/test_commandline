@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+
+# For the license, see the LICENSE file in the root directory.
+
+if [ "$(uname -s)" != "Linux" ]; then
+	# Due to netstat
+	echo "This test only runs only Linux."
+	exit 77
+fi
+
+ROOT=${abs_top_builddir:-$(dirname "$0")/..}
+TESTDIR=${abs_top_testdir:=$(dirname "$0")}
+
+# need SWTPM to be set
+source ${TESTDIR}/common
+
+TPMDIR=`mktemp -d`
+PID_FILE=$TPMDIR/${SWTPM}.pid
+LOG_FILE=$TPMDIR/${SWTPM}.log
+
+source ${TESTDIR}/test_common
+
+trap "cleanup" SIGTERM EXIT
+
+function cleanup()
+{
+	rm -rf $TPMDIR
+	if [ -n "$PID" ]; then
+		kill_quiet -SIGTERM $PID 2>/dev/null
+	fi
+}
+
+PORT=11234
+
+export TCSD_TCP_DEVICE_HOSTNAME=localhost
+export TCSD_TCP_DEVICE_PORT=$PORT
+export TCSD_USE_TCP_DEVICE=1
+
+# Test 1: test port and directory command line parameters; use log level 20
+FILEMODE=641
+exec 100<>$LOG_FILE
+
+$SWTPM_EXE socket \
+	-p $PORT \
+	--tpmstate dir=$TPMDIR,mode=$FILEMODE \
+	--pid file=$PID_FILE \
+	--log fd=100,level=20 \
+	--flags not-need-init \
+	${SWTPM_TEST_SECCOMP_OPT} &
+PID=$!
+exec 100>&-
+
+if wait_port_open $PORT $PID 4; then
+	echo "Test 1 failed: TPM did not open port $PORT"
+	exit 1
+fi
+
+kill_quiet -0 $PID
+if [ $? -ne 0 ]; then
+	echo "Test 1 failed: TPM process not running"
+	exit 1
+fi
+
+if wait_for_file $PID_FILE 3; then
+	echo "Error: ${SWTPM_INTERFACE} TPM did not write pidfile."
+	exit 1
+fi
+
+validate_pidfile $PID $PID_FILE
+
+${SWTPM_BIOS} &>/dev/null
+if [ $? -ne 0 ]; then
+	echo "Test 1 failed: tpm_bios did not work"
+	exit 1
+fi
+
+filemode=$(get_filemode ${TPMDIR}/tpm-00.permall)
+if [ "$filemode" != "$FILEMODE" ]; then
+	echo "Filemode bits are wrong"
+	echo "Expected: $FILEMODE"
+	echo "Actual  : $filemode"
+	exit 1
+fi
+
+check_logfile_patterns_level_20 $LOG_FILE
+rm -f $LOG_FILE
+
+kill_quiet -SIGTERM $PID &>/dev/null
+wait_process_gone $PID 2
+
+exec 20<&1-; exec 21<&2-
+kill_quiet -0 $PID &>/dev/null
+RES=$?
+exec 1<&20-; exec 2<&21-
+
+if [ $RES -eq 0 ]; then
+	kill_quiet -SIGKILL $PID
+	echo "Test 1 failed: TPM process did not terminate on SIGTERM"
+	exit 1
+fi
+
+echo "Test 1 passed"
+cleanup
+
+# Test 2: test port, directory and terminate command line parameters (-t)
+#         that causes the swtpm process to exit upon connection close
+TPMDIR=`mktemp -d`
+
+$SWTPM_EXE socket \
+	--flags not-need-init \
+	-p $PORT \
+	--tpmstate dir=$TPMDIR \
+	-t \
+	${SWTPM_TEST_SECCOMP_OPT} &>/dev/null &
+PID=$!
+
+if wait_port_open $PORT $PID 4; then
+	echo "Test 1 failed: TPM did not open port $PORT"
+	exit
+fi
+
+exec 20<&1-; exec 21<&2-
+kill_quiet -0 $PID
+RES=$?
+exec 1<&20-; exec 2<&21-
+
+if [ $RES -ne 0 ]; then
+	echo "Test 2 failed: TPM process not running"
+	exit 1
+fi
+
+exec 100<>/dev/tcp/localhost/$PORT
+if [ $? -ne 0 ]; then
+	echo "Test 2 failed: Could not connect to TPM"
+	exit 1
+fi
+
+exec 100>&-
+
+if wait_port_closed $PORT $PID 8; then
+	echo "Test 2 failed: TPM did not close port"
+	exit 1
+fi
+
+if wait_process_gone $PID 4; then
+	echo "Test 2 failed: TPM process did not shut down"
+	exit 1
+fi
+
+exec 20<&1-; exec 21<&2-
+kill_quiet -0 $PID
+RES=$?
+exec 1<&20-; exec 2<&21-
+
+if [ $RES -eq 0 ]; then
+	kill_quiet -SIGKILL $PID
+	echo "Test 2 failed: TPM process did not terminate on connection loss"
+	exit 1
+fi
+
+echo "Test 2 passed"
+
+# Test 3: test --fd= and --ctrl type=unxio,clientfd=
+#         The python script execs swtpm with client sockets
+exec 20<&1-; exec 21<&2-
+LOG=$(PID_FILE=$TPMDIR/swtpm.pid SWTPM_EXE=$SWTPM_EXE TPMDIR=$TPMDIR exec $TESTDIR/test_clientfds.py)
+RES=$?
+exec 1<&20-; exec 2<&21-
+
+if [ $RES -ne 0 ]; then
+    echo "Test 3 failed: $LOG"
+    exit 1
+fi
+
+echo "Test 3 passed"
+
+exit 0

@@ -1,0 +1,116 @@
+TPM { }
+
+DEFINITIONS IMPLICIT TAGS ::=
+
+BEGIN
+
+tcg OBJECT IDENTIFIER ::= {
+  joint-iso-itu-t(2) international-organizations(23) tcg(133)
+}
+
+tcg-attribute OBJECT IDENTIFIER ::= {tcg 2}
+
+tcg-at-tpmManufacturer OBJECT IDENTIFIER ::= {tcg-attribute 1}
+tcg-at-tpmModel OBJECT IDENTIFIER ::= {tcg-attribute 2}
+tcg-at-tpmVersion OBJECT IDENTIFIER ::= {tcg-attribute 3}
+tcg-at-platformManufacturer OBJECT IDENTIFIER ::= {tcg-attribute 4}
+tcg-at-platformModel OBJECT IDENTIFIER ::= {tcg-attribute 5}
+tcg-at-platformVersion OBJECT IDENTIFIER ::= {tcg-attribute 6}
+tcg-at-tpmSpecification OBJECT IDENTIFIER ::= {tcg-attribute 16}
+
+tcg-kp-EKCertificate OBJECT IDENTIFIER ::= {
+  joint-iso-itu-t(2) international-organizations(23) tcg(133) kp(8) 1
+}
+
+TPMSpecificationInfo ::= SEQUENCE {
+  tpmSpecificationSeq TPMSpecificationSeq
+}
+
+TPMSpecificationSeq ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  tpmSpecificationSet TPMSpecificationSet
+}
+
+TPMSpecificationSet ::= SET {
+  tpmSpecification TPMSpecification
+}
+
+TPMSpecification ::= SEQUENCE {
+  family UTF8String,
+  level INTEGER,
+  revision INTEGER
+}
+
+TPMManufacturerInfo ::= SEQUENCE {
+  tpmManufacturerSet TPMManufacturerSet,
+  tpmModelSet        TPMModelSet,
+  tpmVersionSet      TPMVersionSet
+}
+
+TPMManufacturerSet ::= SET {
+  tpmManufacturer TPMManufacturer
+}
+
+TPMManufacturer ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  manufacturer UTF8String
+}
+
+TPMModelSet ::= SET {
+  tpmModel TPMModel
+}
+
+TPMModel ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  model UTF8String
+}
+
+TPMVersionSet ::= SET {
+  tpmVersion TPMVersion
+}
+
+TPMVersion ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  version UTF8String
+}
+
+PlatformManufacturerInfo ::= SEQUENCE {
+  platformManufacturerSet PlatformManufacturerSet,
+  platformModelSet        PlatformModelSet,
+  platformVersionSet      PlatformVersionSet
+}
+
+PlatformManufacturerSet ::= SET {
+  platformManufacturer PlatformManufacturer
+}
+
+PlatformManufacturer ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  manufacturer UTF8String
+}
+
+PlatformModelSet ::= SET {
+  platformModel PlatformModel
+}
+
+PlatformModel ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  model UTF8String
+}
+
+PlatformVersionSet ::= SET {
+  platformVersion PlatformVersion
+}
+
+PlatformVersion ::= SEQUENCE {
+  id OBJECT IDENTIFIER,
+  version UTF8String
+}
+
+PlatformCertificateSAN ::= SEQUENCE OF ANY
+
+TPMEKCertExtendedKeyUsage ::= SEQUENCE {
+  id OBJECT IDENTIFIER
+}
+
+END

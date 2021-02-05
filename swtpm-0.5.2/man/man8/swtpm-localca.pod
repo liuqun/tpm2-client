@@ -1,0 +1,111 @@
+=head1 NAME
+
+swtpm-localca  - Local CA to create EK and platform certs for swtpm
+
+=head1 SYNOPSIS
+
+B<swtpm-localca [OPTIONS]>
+
+=head1 DESCRIPTION
+
+B<swtpm-localca> is a tool to create TPM Endorsement Key (EK) and platform
+certificates on the host. It uses the I<swtpm_cert> program to create
+the certificates.
+
+The program will typically be invoked by the I<swtpm_setup> program
+that uses the I</etc/swtpm_setup.conf> configuration file where
+a variable needs to be set that points to this program.
+It implements command line options that the I<swtpm_setup>
+program uses to provide the necessary parameters to it.
+
+B<swtpm-localca> will automatically try to create the signing key and
+certificate if the configuration points to a missing signing key.
+Since this certificate must be signed by a CA, a root certificate authority
+will also be created and will sign this certificate. The root CA's
+private key and certificate will be located in the same directory as the
+signing key and have the names swtpm-localca-rootca-privkey.pem and
+swtpm-localca-rootca-cert.pem respectively. The environment variable
+SWTPM_ROOTCA_PASSWORD can be set for the password of the root CA's
+private key.
+
+Note: Due to limitations of 'certtool', the possible passwords used for
+securing the root CA's private key and the intermedia CA's private
+key have to be passed over the command line and therefore will be visible
+to others on the system. If you are concerned about this, you should create
+the CAs elsewhere and copy them onto the target system.
+
+The following options are supported:
+
+=over 4
+
+=item B<--type type>
+
+This parameter indicates the type of certificate to create. The type parameter may
+be one of the following: I<ek>, or I<platform>
+
+=item B<--dir dir>
+
+This parameter indicates the directory into which the certificate is to be stored.
+The EK certificate is stored in this directory under the name
+ek.cert and the platform certificate under the name platform.cert.
+
+=item B<--ek ek>
+
+This parameter indicates the modulus of the public key of the endorsement key
+(EK). The public key is provided as a sequence of ASCII hex digits.
+
+In case ECC (elliptic curve crypography) keys are used, the parameter must
+have the format --ek x=<hex digits>,y=<hex digits>,id=<curve id>. The
+id=<curve id> part is optional and only necessary for ECC curves other
+than secp256r1.
+
+=item B<--vmid ID>
+
+This parameter indicates the ID of the VM for which to create the certificate.
+
+=item B<--logfile <logfile>>
+
+The log file to log output to; by default logging goes to stdout and stderr
+on the console.
+
+=item B<--configfile <configuration file>>
+
+The configuration file to use. If omitted, the default configuration
+file I</etc/swtpm-localca.conf> will be used.
+
+=item B<--optsfile <options file>>
+
+The options file to use. If omitted, the default options file
+I</etc/swtpm-localca.options> will be used.
+
+=item B<--tpm-spec-family>, B<--tpm-spec-revision>, B<--tpm-spec-level>
+
+TPM specification parameters that describe the specification that was
+followed for the TPM implementation. The parameters will be passed
+to swtpm_cert for the creation of the EK certificate.
+
+=item B<--tpm2>
+
+Create TPM 2 compliant certificates.
+
+=item B<--allow-signing>
+
+Create an EK that can also be used for signing. Without this option, the
+EK can only be used for key encipherment. This option requires --tpm2.
+
+=item B<--decryption>
+
+If --allow-signing is passed and the EK should also be useable for key
+encipherment, this option must be passed. Otherwise key encipherment is the
+default. This option requires --tpm2.
+
+=back
+
+=head1 SEE ALSO
+
+B<swtpm-localca.conf>, B<swtpm-localca.options>, 
+B<swtpm_setup>, B<swtpm_setup.conf>
+
+=head1 REPORTING BUGS
+
+Report bugs to Stefan Berger <stefanb@linux.vnet.ibm.com>

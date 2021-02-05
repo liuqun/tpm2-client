@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+
+# For the license, see the LICENSE file in the root directory.
+
+ROOT=${abs_top_builddir:-$(dirname "$0")/..}
+TESTDIR=${abs_top_testdir:-$(dirname "$0")}
+SRCDIR=${abs_top_srcdir:-$(dirname "$0")/..}
+
+PATH=$ROOT/src/swtpm:$PATH
+
+source ${abs_top_builddir:-$(dirname "$0")/..}/tests/test_config
+
+PARAMETERS=(
+	""
+	"--createek"
+	"--createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display"
+	"--createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile.txt"
+	"--createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt"
+	"--createek --allow-signing"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile.txt"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile256bit.txt --cipher aes-256-cbc"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt --cipher aes-256-cbc"
+	"--ecc --createek"
+	"--ecc --createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display"
+	"--ecc --createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile.txt"
+	"--ecc --createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt"
+	"--ecc --createek --allow-signing"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile.txt"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile256bit.txt --cipher aes-256-cbc"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt --cipher aes-256-cbc"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile-fd 100 --cipher aes-256-cbc"
+	"--ecc --createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile-fd 101 --cipher aes-256-cbc"
+)
+
+# Tests for 3072 bit RSA keys to be appended to above array if RSA 3072 keys are supported
+PARAMETERS_3072=(
+	"--createek --rsa-keysize 3072"
+	"--createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --rsa-keysize 3072"
+	"--createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile.txt --rsa-keysize 3072"
+	"--createek --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt --rsa-keysize 3072"
+	"--createek --allow-signing --rsa-keysize 3072"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --rsa-keysize 3072"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile.txt --rsa-keysize 3072"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt --rsa-keysize 3072"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --keyfile ${TESTDIR}/data/keyfile256bit.txt --cipher aes-256-cbc --rsa-keysize 3072"
+	"--createek --allow-signing --create-ek-cert --create-platform-cert --config ${TESTDIR}/swtpm_setup.conf --vmid test --display --pwdfile ${TESTDIR}/data/pwdfile.txt --cipher aes-256-cbc --rsa-keysize 3072"
+)
+
+# Open read-only file descriptors referenced in test cases
+exec 100<${TESTDIR}/data/keyfile256bit.txt
+exec 101<${TESTDIR}/data/pwdfile.txt
+
+# produced file size is always the same with TPM2
+
+SWTPM=swtpm
+SWTPM_EXE=$ROOT/src/swtpm/$SWTPM
+TPMDIR=$(mktemp -d)
+SWTPM_SETUP_CONF=$SRCDIR/etc/swtpm_setup.conf
+TPMAUTHORING="$ROOT/src/swtpm_setup/swtpm_setup --tpm2 --config ${SWTPM_SETUP_CONF}"
+PATH=${ROOT}/src/swtpm_bios:$PATH
+
+
+trap "cleanup" SIGTERM EXIT
+
+function cleanup()
+{
+	if [ -n "$TPMDIR" ]; then
+		rm -rf $TPMDIR
+	fi
+}
+
+if [ -n "$($TPMAUTHORING --tpm2 --print-capabilities | grep tpm2-rsa-keysize-3072 )" ]; then
+	PARAMETERS+=( "${PARAMETERS_3072[@]}" )
+fi
+
+# swtpm_setup.conf points to the local create_certs.sh
+# For create_certs.sh to be found (with out full path)
+# add this directory to the PATH
+PATH=$PATH:$TESTDIR
+
+for (( i=0; i<${#PARAMETERS[*]}; i++)); do
+	rm -rf $TPMDIR/*
+	echo -n "Test $i: "
+	$TPMAUTHORING \
+		--tpm-state $TPMDIR \
+		--tpm "$SWTPM_EXE socket ${SWTPM_TEST_SECCOMP_OPT}" \
+		${PARAMETERS[$i]} 2>&1 >/dev/null
+
+	if [ $? -ne 0 ]; then
+		echo "ERROR: Test with parameters '${PARAMETERS[$i]}' failed."
+		exit 1
+	elif [ ! -f $TPMDIR/tpm2-00.permall ]; then
+		echo "ERROR: Test with parameters '${PARAMETERS[$i]}' did not
+		      produce file $TPMDIR/tpm2-00.permall."
+		exit 1
+	fi
+
+	# Make sure the state is encrypted when a key was given.
+	# We expect sequences of 4 0-bytes in unencrypted state
+	# and no such sequences in encrypted state.
+	nullseq="$(cat $TPMDIR/tpm2-00.permall | \
+			od -t x1 -A n | tr -d '\n' | tr -s ' ' |
+			grep "00 00 00 00")"
+	if [[ "${PARAMETERS[$i]}" =~ (keyfile|pwdfile) ]]; then
+		if [ -n "${nullseq}" ]; then
+			echo "ERROR: State file is not encrypted with" \
+			     "parameters '${PARAMETERS[$i]}'"
+		fi
+	else
+		if [ -z "${nullseq}" ]; then
+			echo "ERROR: State must not be encrypted with" \
+			     "parameters '${PARAMETERS[$i]}'"
+		fi
+	fi
+
+	echo "SUCCESS with parameters '${PARAMETERS[$i]}'."
+done
+
+exec 100>&-
+exec 101>&-
