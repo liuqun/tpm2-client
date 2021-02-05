@@ -1,16 +1,12 @@
-// Copyright (c) 2017, 青岛中怡智能安全研究院有限公司
-// All rights reserved.
-
-#ifndef NVSPACEMASTER_H_
-#define NVSPACEMASTER_H_
+#pragma once
 #ifdef __cplusplus
 
 #include <tss2/tss2_sys.h>
 
-class NVSpaceMaster
+class NVStorageFormatter
 {
 public:
-    NVSpaceMaster();
+    NVStorageFormatter();
     /**
      * 内部成员变量: pSysContext
      */
@@ -24,13 +20,13 @@ public:
      * 申请一块通过密码授权访问的非易失存储空间
      *
      * 用法:
-     * NVSpaceMaster master;
-     * master.setCtx(ctx);
+     * NVStorageFormatter formatter;
+     * formatter.setCtx(ctx);
      * try
      * {
-     *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
+     *     formatter.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
      *     ...
-     *     master.undefineNVSpace(nvIndex);
+     *     formatter.undefineNVSpace(nvIndex);
      * }catch (const char *ErrMsg)
      * {   printf("Error %s\n", ErrMsg);
      * }
@@ -47,13 +43,13 @@ public:
      * 注销一块通过密码授权访问的非易失存储空间
      *
      * 用法:
-     * NVSpaceMaster master;
-     * master.setCtx(ctx);
+     * NVStorageFormatter formatter;
+     * formatter.setCtx(ctx);
      * try
      * {
-     *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
+     *     formatter.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
      *     ...
-     *     master.undefineNVSpace(nvIndex);
+     *     formatter.undefineNVSpace(nvIndex);
      * }catch (const char *ErrMsg)
      * {   printf("Error %s\n", ErrMsg);
      * }
@@ -82,7 +78,7 @@ public:
      * An overwritten method of global func GetErrMsgOfTPMResponseCode()
      *
      * 用法1: printf("%s\n", GetErrMsgOfTPMResponseCode(rc));
-     * 用法2: printf("%s\n", NVSpaceMaster::GetErrMsgOfTPMResponseCode(rc));
+     * 用法2: printf("%s\n", NVStorageFormatter::GetErrMsgOfTPMResponseCode(rc));
      *
      * @param TSS2_RC rc
      * @return const char* - 一个表示错误信息的字符串(只读)
@@ -102,9 +98,8 @@ public:
  *
  * 3. 大小写以及下划线命名原则:
  * 驼峰写法中出现缩略词(例如 USB, NVRAM, TPM 等)时, 缩略词尽量保持全大写, 避免出现 Usb, Nvram, Tpm 形式的写法
- * 推荐写法如下: NVSpaceMaster, GetErrMsgOfTPMResponseCode()
+ * 推荐写法如下: NVStorageFormatter, GetErrMsgOfTPMResponseCode()
  * C++ 函数名尽量不使用下划线, 推荐使用 namespace 取代下划线命名方式
  */
 
 #endif /* __cplusplus */
-#endif /* NVSPACEMASTER_H_ */

@@ -1,21 +1,18 @@
-// Copyright (c) 2017, 青岛中怡智能安全研究院有限公司
-// All rights reserved.
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
 
-#include "NVSpaceMaster.h"
+#include "NVStorageFormatter.h"
 #include "ResponseCodeResolver.h"
 
-NVSpaceMaster::NVSpaceMaster()
+NVStorageFormatter::NVStorageFormatter()
 {
     this->pSysContext = NULL;
 }
 
-const char* NVSpaceMaster::GetErrMsgOfTPMResponseCode(TPM2_RC rval)
+const char* NVStorageFormatter::GetErrMsgOfTPMResponseCode(TPM2_RC rval)
 {
     const char *msg = "";
     ResponseCodeResolver *pResolver =
@@ -27,7 +24,7 @@ const char* NVSpaceMaster::GetErrMsgOfTPMResponseCode(TPM2_RC rval)
     return msg;
 }
 
-void NVSpaceMaster::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
+void NVStorageFormatter::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
         const char *password, uint16_t dataSize)
 {
     if (!this->pSysContext)
@@ -50,7 +47,7 @@ void NVSpaceMaster::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
     publicInfo.nvPublic.authPolicy.size = 0;
     publicInfo.nvPublic.dataSize = dataSize;
 
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
+    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 */
     TPMS_AUTH_COMMAND cmdAuth;
     TSS2L_SYS_AUTH_COMMAND cmdAuthsArray;
 
@@ -61,7 +58,7 @@ void NVSpaceMaster::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
     cmdAuthsArray.count = 1;
     cmdAuthsArray.auths[0] = cmdAuth;
 
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
+    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 */
     TPMS_AUTH_RESPONSE rspAuth;
     TSS2L_SYS_AUTH_RESPONSE rspAuthsArray;
 
@@ -101,14 +98,14 @@ void NVSpaceMaster::defineNVSpaceWithPassword(TPMI_RH_NV_INDEX nvIndex,
     }
 }
 
-void NVSpaceMaster::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
+void NVStorageFormatter::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
 {
     if (!this->pSysContext)
     {
         throw "Uninitialized Context!";
     }
 
-    /* 创建以下结构体作为 Tss2_Sys_NV_UndefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
+    /* 创建以下结构体作为 Tss2_Sys_NV_UndefineSpace() 的输入参数 */
     TPMS_AUTH_COMMAND cmdAuth;
     TSS2L_SYS_AUTH_COMMAND cmdAuthsArray;
 
@@ -129,7 +126,7 @@ void NVSpaceMaster::undefineNVSpace(TPMI_RH_NV_INDEX nvIndex)
     }
 }
 
-void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
+void NVStorageFormatter::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
         uint16_t dataSize)
 {
     if (!this->pSysContext)
@@ -152,7 +149,7 @@ void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
     publicInfo.nvPublic.authPolicy.size = 0;
     publicInfo.nvPublic.dataSize = dataSize;
 
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
+    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 */
     TPMS_AUTH_COMMAND cmdAuth;
     TSS2L_SYS_AUTH_COMMAND cmdAuthsArray;
 
@@ -163,7 +160,7 @@ void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
     cmdAuthsArray.auths[0] = cmdAuth;
     cmdAuthsArray.count = 1;
 
-    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 TSS2_SYS_RSP_AUTHS  */
+    /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输出参数 */
     TPMS_AUTH_RESPONSE rspAuth;
     TSS2L_SYS_AUTH_RESPONSE rspAuthsArray;
 
@@ -216,6 +213,6 @@ void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
  *
  * 3. 大小写以及下划线命名原则:
  * 驼峰写法中出现缩略词(例如 USB, NVRAM, TPM 等)时, 缩略词尽量保持全大写, 避免出现 Usb, Nvram, Tpm 形式的写法
- * 推荐写法如下: NVSpaceMaster, GetErrMsgOfTPMResponseCode()
+ * 推荐写法如下: NVStorageFormatter, GetErrMsgOfTPMResponseCode()
  * C++ 函数名尽量不使用下划线, 推荐使用 namespace 取代下划线命名方式
  */

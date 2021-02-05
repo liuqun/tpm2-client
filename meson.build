@@ -27,8 +27,8 @@ tss2_tcti_swtpm_lib = [
 exe = executable('main',
   sources: [
     'main.cpp',
-    'NVSpaceMaster.cpp',
-    'NVSpaceMaster.h',
+    'NVStorageFormatter.cpp',
+    'NVStorageFormatter.h',
     'ResponseCodeResolver.cpp',
     'ResponseCodeResolver.h',
     'sockets.h',

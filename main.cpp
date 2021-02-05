@@ -10,7 +10,7 @@ using namespace std;
 
 #include "tcti_util.h"
 #include "ResponseCodeResolver.h"
-#include "NVSpaceMaster.h"
+#include "NVStorageFormatter.h"
 
 /* 自定义函数 */
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext);
@@ -94,13 +94,13 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
     /*
      * Test1:
      */
-    class NVSpaceMaster master;
-    master.setCtx(pSysContext);
+    class NVStorageFormatter formatter;
+    formatter.setCtx(pSysContext);
 
     const TPMI_RH_NV_INDEX NV_INDEX_WITHOUT_PASSWORD = 0x01500015;
     const uint16_t NV_SPACE_SIZE = 32;
     try {
-        master.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD, NV_SPACE_SIZE);
+        formatter.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD, NV_SPACE_SIZE);
     } catch (const char *errMsg) {
         fprintf(stderr, "errMsg = %s\n", errMsg);
 	return;
@@ -199,7 +199,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         printf("Read success: dataOut=%s\n", str);
     }
 
-    master.undefineNVSpace(NV_INDEX_WITHOUT_PASSWORD);  // 测试结束时清除之前定义的 NV 区域
+    formatter.undefineNVSpace(NV_INDEX_WITHOUT_PASSWORD);  // 测试结束时清除之前定义的 NV 区域
 
     /*
      *
@@ -218,7 +218,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
     printf("Try to invoke NV_DefineSpace() with password=\"%s\"\n", password);
     try
     {
-        master.defineNVSpaceWithPassword(NV_INDEX, password,
+        formatter.defineNVSpaceWithPassword(NV_INDEX, password,
                 nvWriteData.size);  // 定义一块 NV 区域用于测试
 
         printf("NV_DefineSpace() successfully.\n");
@@ -305,7 +305,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
             }
             printf("}\n");
         }
-        master.undefineNVSpace(NV_INDEX);  // 测试结束时清除之前定义的 NV 区域
+        formatter.undefineNVSpace(NV_INDEX);  // 测试结束时清除之前定义的 NV 区域
         printf("NV_UndefineSpace() successfully. The end.\n");
     } catch (const char *ErrMsg)
     {
