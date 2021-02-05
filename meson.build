@@ -14,6 +14,9 @@ tss2_tcti_device_lib = [
 tss2_tcti_mssim_lib = [
   dependency('tss2-tcti-mssim', version: '>= 3.0.3'),
 ]
+tss2_tcti_swtpm_lib = [
+  dependency('tss2-tcti-swtpm', version: '>= 3.0.3'),
+]
 
 #conf.set('HAVE_TSS2', '1')
 #configure_file(
@@ -35,6 +38,7 @@ exe = executable('main',
   install: true,
   dependencies: [
     tss2_sys_lib,
+    tss2_tcti_swtpm_lib,
     tss2_tcti_mssim_lib,
     tss2_mu_lib,
   ],

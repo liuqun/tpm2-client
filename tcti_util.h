@@ -3,11 +3,16 @@
 
 #include <tss2/tss2_sys.h>
 #include <tss2/tss2_tcti_mssim.h>
+#include <tss2/tss2_tcti_swtpm.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+TSS2_RC InitIBMSoftwareTPM20SimulatorTctiContext (
+                const char *device_conf,
+                TSS2_TCTI_CONTEXT **tcti_context
+                );
 TSS2_RC InitSocketTctiContext (const char  *device_conf,
                                TSS2_TCTI_CONTEXT      **tcti_context);
 void TeardownTctiContext(TSS2_TCTI_CONTEXT **tctiContext);
