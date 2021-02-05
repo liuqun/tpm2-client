@@ -1,4 +1,6 @@
 *.o
+tpm_server
+NVChip
 main
 *.bak
 *.rar
