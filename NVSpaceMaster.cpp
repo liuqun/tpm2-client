@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdio.h>
 
 #include "NVSpaceMaster.h"
 #include "ResponseCodeResolver.h"
@@ -190,6 +191,13 @@ void NVSpaceMaster::defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
     }
 
     /* 抛出异常 */
+    if (0x0100 == rval)
+    {
+        const char *FatalErrorMessage =
+            "This TPM chip or simulator has not been initialized!\n"
+            "A TPM2_Startup() commmand MUST be performed before doing anything else.";
+        fprintf(stderr, "Error 0x%04X: %s\n", rval, FatalErrorMessage);
+    }
     if (rval)
     {
         throw GetErrMsgOfTPMResponseCode(rval);

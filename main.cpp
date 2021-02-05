@@ -123,7 +123,12 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
 
     const TPMI_RH_NV_INDEX NV_INDEX_WITHOUT_PASSWORD = 0x01500015;
     const uint16_t NV_SPACE_SIZE = 32;
-    master.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD, NV_SPACE_SIZE);
+    try {
+        master.defineNVSpaceWithoutPassword(NV_INDEX_WITHOUT_PASSWORD, NV_SPACE_SIZE);
+    } catch (const char *errMsg) {
+        fprintf(stderr, "errMsg = %s\n", errMsg);
+	return;
+    }
 
     /* 创建以下结构体作为 Write(), Read() 的输入参数 TSS2_SYS_CMD_AUTHS */
     TPMS_AUTH_COMMAND sessionData;
