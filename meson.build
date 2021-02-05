@@ -5,14 +5,14 @@ project('tpm2-client', 'c',
 add_languages('cpp')
 conf = configuration_data()
 
-#tss2_esys_lib = dependency('tss2-esys', version: '>= 2.0')
-#tss2_mu_lib = dependency('tss2-mu', version: '>= 2.0')
-tss2_sys_lib = dependency('tss2-sys', version: '>= 2.0')
+tss2_esys_lib = dependency('tss2-esys', version: '>= 3.0.3')
+tss2_mu_lib = dependency('tss2-mu', version: '>= 3.0.3')
+tss2_sys_lib = dependency('tss2-sys', version: '>= 3.0.3')
 tss2_tcti_device_lib = [
-  dependency('tss2-tcti-device', version: '>= 2.0'),
+  dependency('tss2-tcti-device', version: '>= 3.0.3'),
 ]
 tss2_tcti_mssim_lib = [
-  dependency('tss2-tcti-mssim', version: '>= 2.0'),
+  dependency('tss2-tcti-mssim', version: '>= 3.0.3'),
 ]
 
 #conf.set('HAVE_TSS2', '1')
@@ -36,6 +36,7 @@ exe = executable('main',
   dependencies: [
     tss2_sys_lib,
     tss2_tcti_mssim_lib,
+    tss2_mu_lib,
   ],
 )
 
