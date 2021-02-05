@@ -86,10 +86,11 @@ static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext)
         return;
     }
 
-    abiVersion.tssCreator = 1;//TSSWG_INTEROP;
-    abiVersion.tssFamily = 1;//TSS_SAPI_FIRST_FAMILY;
-    abiVersion.tssLevel = 1;//TSS_SAPI_FIRST_LEVEL;
-    abiVersion.tssVersion = 1;//TSS_SAPI_FIRST_VERSION;
+    abiVersion = TSS2_ABI_VERSION_CURRENT;
+    //abiVersion.tssCreator = TSSWG_INTEROP;
+    //abiVersion.tssFamily = TSS_SAPI_FIRST_FAMILY;
+    //abiVersion.tssLevel = TSS_SAPI_FIRST_LEVEL;
+    //abiVersion.tssVersion = TSS_SAPI_FIRST_VERSION;
 
     rval = Tss2_Sys_Initialize(pSysContext, contextSize, pTctiContext,
             &abiVersion);
