@@ -11,13 +11,21 @@ class NVSpaceMaster
 {
 public:
     NVSpaceMaster();
+    /**
+     * 内部成员变量: pSysContext
+     */
+private:
+    TSS2_SYS_CONTEXT *pSysContext;
+public:
+    void setCtx(TSS2_SYS_CONTEXT *ctx) {pSysContext = ctx;};
+    TSS2_SYS_CONTEXT *getCtx() {return pSysContext;};
 
     /**
      * 申请一块通过密码授权访问的非易失存储空间
      *
      * 用法:
      * NVSpaceMaster master;
-     * master.pSysContext = pSysContext;
+     * master.setCtx(ctx);
      * try
      * {
      *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
@@ -40,7 +48,7 @@ public:
      *
      * 用法:
      * NVSpaceMaster master;
-     * master.pSysContext = pSysContext;
+     * master.setCtx(ctx);
      * try
      * {
      *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
@@ -67,23 +75,6 @@ public:
      */
     void defineNVSpaceWithoutPassword(TPMI_RH_NV_INDEX nvIndex,
             uint16_t nvDataSize);
-
-    /**
-     * 公共成员变量: pSysContext
-     * 用法:
-     * NVSpaceMaster master;
-     * master.pSysContext = pSysContext;
-     * try
-     * {
-     *     master.defineNVSpaceWithPassword(nvIndex, password, nvDataSize);
-     *     ...
-     *     master.undefineNVSpace(nvIndex);
-     * }catch (const char *ErrMsg)
-     * {   printf("Error %s\n", ErrMsg);
-     * }
-     */
-public:
-    TSS2_SYS_CONTEXT *pSysContext;
 
     /* 其他公开的 API 接口 */
 public:

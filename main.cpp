@@ -95,7 +95,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
      * Test1:
      */
     class NVSpaceMaster master;
-    master.pSysContext = pSysContext;
+    master.setCtx(pSysContext);
 
     const TPMI_RH_NV_INDEX NV_INDEX_WITHOUT_PASSWORD = 0x01500015;
     const uint16_t NV_SPACE_SIZE = 32;
