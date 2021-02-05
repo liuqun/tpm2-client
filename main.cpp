@@ -11,30 +11,6 @@ using namespace std;
 #include "tcti_util.h"
 #include "ResponseCodeResolver.h"
 #include "NVSpaceMaster.h"
-/*
- * longest possible conf string:
- * HOST_NAME_MAX + max char uint16 (5) + strlen ("host=,port=") (11)
- */
-#define TCTI_MSSIM_CONF_MAX (256 + 16)
-#define TCTI_MSSIM_DEFAULT_HOST "localhost"
-#define TCTI_MSSIM_DEFAULT_PORT 2321
-#define MSSIM_CONF_DEFAULT_INIT { \
-    .host = TCTI_MSSIM_DEFAULT_HOST, \
-    .port = TCTI_MSSIM_DEFAULT_PORT, \
-}
-
-#if !defined(DEFAULT_HOSTNAME) && !defined(DEFAULT_RESMGR_TPM_PORT)
-const char DEFAULT_HOSTNAME[] = TCTI_MSSIM_DEFAULT_HOST;
-const uint16_t DEFAULT_RESMGR_TPM_PORT = TCTI_MSSIM_DEFAULT_PORT;
-#endif
-
-//#define TCTI_MSSIM_MAGIC 0xf05b04cd9f02728dULL
-
-typedef struct {
-    const char *host;
-    uint16_t port;
-} mssim_conf_t;
-
 
 /* 自定义函数 */
 static void DoMyTestsWithTctiContext(TSS2_TCTI_CONTEXT *pTctiContext);
@@ -239,14 +215,14 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         nvWriteData.buffer[i] = i + 1;
     }
 
-    printf(            "Try to invoke NV_DefineSpace() with password=\"%s\"\n", password);
+    printf("Try to invoke NV_DefineSpace() with password=\"%s\"\n", password);
     try
     {
         master.defineNVSpaceWithPassword(NV_INDEX, password,
                 nvWriteData.size);  // 定义一块 NV 区域用于测试
 
         printf("NV_DefineSpace() successfully.\n");
-        printf("Next: Try to write an read with this NV index(=0x%08X)\n",
+        printf("Next: Try to write and read with this NV index(=0x%08X)\n",
                 NV_INDEX);
 
         /* 创建以下结构体作为 Tss2_Sys_NV_DefineSpace() 的输入参数 TSS2_SYS_CMD_AUTHS */
