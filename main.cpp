@@ -7,9 +7,9 @@ using namespace std;
 
 #include <tss2/tss2_sys.h>
 #include <tss2/tss2_tpm2_types.h>
+#include <tss2/tss2_rc.h>
 
 #include "tcti_util.h"
-#include "ResponseCodeResolver.h"
 #include "NVStorageFormatter.h"
 
 /* 自定义函数 */
@@ -245,7 +245,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         if (rc1passwd)
         {
             printf("Write ERROR: %s\n",
-                    GetErrMsgOfTPMResponseCode(rc1passwd));
+                    Tss2_RC_Decode(rc1passwd));
         }
         else
         {
@@ -266,7 +266,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         if (rc1passwd)
         {
             printf("Read ERROR: %s\n",
-                    GetErrMsgOfTPMResponseCode(rc1passwd));
+                    Tss2_RC_Decode(rc1passwd));
         }
         else
         {
@@ -292,7 +292,7 @@ static void DoMyTestsWithSysContext(TSS2_SYS_CONTEXT *pSysContext)
         if (rc2passwd)
         {
             printf("Read ERROR: %s\n",
-                    GetErrMsgOfTPMResponseCode(rc2passwd));
+                    Tss2_RC_Decode(rc2passwd));
         }
         else
         {
